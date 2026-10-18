@@ -13,9 +13,9 @@
 - [x] `AGENTS.md` con lecturas iniciales, >=4 pasos previos a commit y rutas protegidas.
 - [x] Regla en `.agents/rules/` con scope explícito.
 - [x] Skill en `.agents/skills/` con objetivo, entradas, salidas y aceptación verificable.
-- [ ] Verificar efectivamente árbol remoto, consistencia y contenido con la skill.
-- [ ] Verificar diff de la rama contra main, publicar PR con enlace directo a AGENTS.md.
-- [ ] Revisión del profesor (sin merge adelantado).
+- [x] Verificar árbol remoto, existencia y consistencia documental mediante GitHub API y los cinco criterios de la skill (revisión documental). Git CLI local y pruebas de aplicaciones: NO EJECUTADOS.
+- [x] Verificar diff remoto de la rama contra main: siete archivos añadidos, cero archivos de aplicación modificados (GitHub compare). Publicación de PR pendiente hasta su creación.
+- [ ] PR y revisión del profesor (sin merge adelantado).
 
 ## Próximas decisiones
 - Confirmar con el instructor la discrepancia entre la variante del syllabus y el contexto histórico del repo si fuese necesaria.
