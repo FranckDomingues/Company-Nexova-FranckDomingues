@@ -124,4 +124,3 @@ Your instructor or milestone materials will point you to the correct CONTEXT fil
 _Until you add your context, keep this placeholder so the repo structure is clear._
 
 _Estas instrucciones también están disponibles en [español](./CONTEXT.es.md)._
-
