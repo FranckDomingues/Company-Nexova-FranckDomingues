@@ -13,8 +13,8 @@
 - [x] `AGENTS.md` con lecturas iniciales, >=4 pasos previos a commit y rutas protegidas.
 - [x] Regla en `.agents/rules/` con scope explícito.
 - [x] Skill en `.agents/skills/` con objetivo, entradas, salidas y aceptación verificable.
-- [x] Verificar árbol remoto, existencia y consistencia documental mediante GitHub API y los cinco criterios de la skill (revisión documental). Git CLI local y pruebas de aplicaciones: NO EJECUTADOS.
-- [x] Verificar diff remoto de la rama contra main: siete archivos añadidos, cero archivos de aplicación modificados (GitHub compare). Publicación de PR pendiente hasta su creación.
+- [x] Verificar árbol remoto, existencia y consistencia documental mediante GitHub API y los cinco criterios de la skill (revisión documental). Git CLI local ejecutado en Codespaces: git diff --check origin/main...HEAD PASS; siete archivos verificados; worktree limpio. Pruebas de aplicaciones: NO APLICAN a este hito documental.
+- [x] Verificar diff remoto de la rama contra main: siete archivos añadidos, cero archivos de aplicación modificados (GitHub compare). PR #1 creada y abierta hacia main.
 - [ ] PR y revisión del profesor (sin merge adelantado).
 
 ## Próximas decisiones
