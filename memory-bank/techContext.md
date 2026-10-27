@@ -21,7 +21,7 @@ No crear directorios paralelos `frontend/`, `backend/`, `app/` ni duplicar una u
 5. Seguridad: no incluir secretos, tokens, PII ni datos de clientes reales en prompts, logs, capturas o repositorio público.
 
 ## Discrepancia conocida de fuentes
-El `CONTEXT.md` del repo `4GeeksAcademy/Project-FG-Company-Nexova` se refiere a Chile + Argentina; el briefing del syllabus general consultado el 2026-10-18 se refiere a España + Miami. Se conserva íntegro el primero en `BRIEFING.md`, porque concuerda con el monorepo y la elección previa del estudiante. Escalar al instructor si indica que prevalece la variante del syllabus.
+La evaluación del profesor establece que debe prevalecer `4GeeksAcademy/ai-engineering-syllabus/content/contexts/00-general-contexts/nexova-BRIEFING.es.md` (Valencia, España + Miami, Florida). `BRIEFING.md` reproduce ahora esa fuente oficial. `CONTEXT.md` y los materiales previos de Chile/Argentina quedan como antecedentes históricos, no como autoridad para este hito.
 
 ## Validación disponible
 La skill `.agents/skills/milestone-audit/SKILL.md` define comprobaciones manuales reproducibles usando búsqueda, existencia de archivos y Git. No afirmar que pruebas de software o CI han pasado sin ejecutarlas.
