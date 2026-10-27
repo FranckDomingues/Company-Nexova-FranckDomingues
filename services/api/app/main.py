@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.api.routes.incidents import router as incidents_router
 
 app = FastAPI(
     title="Nexova Solutions API",
@@ -10,3 +11,6 @@ app = FastAPI(
 @app.get("/health", tags=["Health"])
 def health_check():
     return {"status": "ok"}
+
+
+app.include_router(incidents_router)
