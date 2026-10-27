@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#102a43" />
+    <title>Análisis de Incidencias | Nexova</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="dashboard.js?v=20261027-codespaces-api" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Saltar al contenido principal</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html" aria-label="Nexova, inicio">NEXOVA <span>OPERACIONES</span></a>
+        <nav aria-label="Navegación principal">
+          <a class="nav-link active" href="index.html" aria-current="page">Análisis de Incidencias</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main-content" class="page-shell">
+      <section class="page-heading" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">ATENCIÓN AL CLIENTE · OPERACIONES</p>
+          <h1 id="page-title">Análisis de Incidencias</h1>
+          <p class="heading-copy">Carga un archivo CSV para revisar métricas agregadas y registros no válidos.</p>
+        </div>
+        <span class="privacy-note"><span aria-hidden="true">●</span> Análisis en el entorno Nexova</span>
+      </section>
+
+      <section class="panel upload-panel" aria-labelledby="upload-title">
+        <div class="section-title-row">
+          <div>
+            <p class="eyebrow">NUEVO ANÁLISIS</p>
+            <h2 id="upload-title">Subir archivo CSV</h2>
+          </div>
+        </div>
+        <form id="upload-form" novalidate>
+          <label class="drop-zone" id="drop-zone" for="csv-file">
+            <span class="upload-icon" aria-hidden="true">↑</span>
+            <span class="drop-title">Selecciona o arrastra un archivo CSV</span>
+            <span class="drop-hint">Los datos se envían únicamente al API de análisis configurado.</span>
+            <input id="csv-file" name="file" type="file" accept=".csv,text/csv" required aria-describedby="file-name upload-error" />
+          </label>
+          <div class="upload-actions">
+            <p id="file-name" class="file-name" aria-live="polite">Ningún archivo seleccionado</p>
+            <button id="analyze-button" class="button button-primary" type="submit" disabled>Analizar archivo</button>
+          </div>
+          <p id="upload-error" class="message error-message" role="alert" hidden></p>
+          <p id="upload-status" class="message status-message" role="status" aria-live="polite" hidden></p>
+        </form>
+      </section>
+
+      <section id="results" aria-labelledby="results-title" hidden>
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow">RESULTADOS</p>
+            <h2 id="results-title">Resumen del análisis</h2>
+          </div>
+          <button id="export-button" class="button button-secondary" type="button" disabled>↓ <span>Descargar results.csv</span></button>
+        </div>
+
+        <div class="metrics-grid" aria-label="Métricas principales">
+          <article class="metric-card metric-total"><p>Total procesados</p><strong id="total-value">—</strong><span>Registros encontrados</span></article>
+          <article class="metric-card metric-valid"><p>Registros válidos</p><strong id="valid-value">—</strong><span>Incluidos en métricas</span></article>
+          <article class="metric-card metric-invalid"><p>Registros no válidos</p><strong id="invalid-value">—</strong><span>Excluidos de métricas</span></article>
+          <article class="metric-card metric-satisfaction"><p>Satisfacción media</p><strong id="average-value">—</strong><span>Sobre 5 puntos</span></article>
+        </div>
+
+        <div class="breakdown-grid">
+          <section class="panel breakdown-panel" aria-labelledby="category-title">
+            <div class="panel-heading"><div><p class="eyebrow">REGISTROS VÁLIDOS</p><h3 id="category-title">Por categoría</h3></div></div>
+            <div class="table-scroll"><table><thead><tr><th scope="col">Categoría</th><th scope="col">Cantidad</th><th scope="col">Porcentaje</th></tr></thead><tbody id="category-rows"></tbody></table></div>
+          </section>
+          <section class="panel breakdown-panel" aria-labelledby="status-title">
+            <div class="panel-heading"><div><p class="eyebrow">REGISTROS VÁLIDOS</p><h3 id="status-title">Por estado</h3></div></div>
+            <div class="table-scroll"><table><thead><tr><th scope="col">Estado</th><th scope="col">Cantidad</th><th scope="col">Porcentaje</th></tr></thead><tbody id="status-rows"></tbody></table></div>
+          </section>
+        </div>
+
+        <div class="breakdown-grid lower-grid">
+          <section class="panel breakdown-panel invalid-panel" aria-labelledby="invalid-title">
+            <div class="panel-heading"><div><p class="eyebrow">CONTROL DE CALIDAD</p><h3 id="invalid-title">Motivos de registros no válidos</h3></div></div>
+            <p class="panel-note">Estos registros se excluyen de las métricas principales. Solo se muestran recuentos agregados.</p>
+            <ul id="invalid-reasons" class="reason-list"></ul>
+          </section>
+          <section class="panel breakdown-panel" aria-labelledby="satisfaction-title">
+            <div class="panel-heading"><div><p class="eyebrow">REGISTROS CERRADOS VÁLIDOS</p><h3 id="satisfaction-title">Distribución de satisfacción</h3></div></div>
+            <div id="scored-count" class="scored-count"></div>
+            <div class="table-scroll"><table><thead><tr><th scope="col">Puntuación</th><th scope="col">Cantidad</th></tr></thead><tbody id="score-rows"></tbody></table></div>
+          </section>
+        </div>
+        <p id="empty-data-note" class="empty-note" hidden>No hay registros válidos para calcular métricas de negocio. Puedes descargar el resumen del análisis.</p>
+      </section>
+      <footer class="page-footer">Nexova Solutions · Herramienta interna de análisis agregado</footer>
+    </main>
+  </body>
+</html>
