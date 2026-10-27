@@ -1,0 +1,5 @@
+# Nexova incident analyzer generated files
+/results.csv
+__pycache__/
+*.py[cod]
+.pytest_cache/
