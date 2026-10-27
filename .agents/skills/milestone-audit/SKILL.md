@@ -18,7 +18,7 @@ Before the last commit or PR submission of this milestone; also after any change
 - `AGENTS.md`, one or more `.agents/rules/*.md`, and this `SKILL.md`.
 
 ## Procedure (read-only)
-1. Read root `BRIEFING.md`; confirm it describes Nexova, Chile + Argentina, key departments and selected customer-support problem. Compare provenance with `company-choice.md`. Flag incompatible source editions, do not rewrite facts.
+1. Read root `BRIEFING.md`; confirm it is sourced from the official syllabus `nexova-BRIEFING.es.md` and describes Nexova in Valencia (Spain) + Miami (Florida), including key departments and customer-support challenges. Treat older `CONTEXT.md` as historical only. Flag mismatched scenario facts anywhere within milestone deliverables.
 2. Read all three memory files: `projectbrief.md` must explain the business and problem; `techContext.md` must explain technical decisions, limitations and exact app paths; `progress.md` must state verified current progress and next steps.
 3. Check `AGENTS.md` names all three memory files for session startup, contains >=4 **ordered** pre-commit steps and identifies protected paths requiring developer confirmation.
 4. Verify at least one rule at `.agents/rules/` states scope explicitly (always active, path-specific or on request), and at least one skill under `.agents/skills/<name>/SKILL.md` has one objective, documented inputs, procedure, and testable acceptance.
