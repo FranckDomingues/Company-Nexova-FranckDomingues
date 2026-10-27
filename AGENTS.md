@@ -1,7 +1,7 @@
 # AGENTS.md — Nexova Engineering Protocol
 
 ## Mission and sources
-Operate inside the existing Nexova Solutions monorepo. Source of truth: `BRIEFING.md` (Chile + Argentina scenario); personal project vision: `company-choice.md`. Never replace these with generic invented business details. Do not silently reconcile conflicting editions: record discrepancy and ask for an explicit decision if it affects implementation.
+Operate inside the existing Nexova Solutions monorepo. Source of truth for this milestone: `BRIEFING.md`, copied from 4Geeks Academy's `nexova-BRIEFING.es.md` (Valencia, Spain + Miami, Florida). `company-choice.md` records the student's personal project vision; older `CONTEXT.md` versions are historical and do not override the official syllabus briefing. Do not invent business details or silently mix scenario editions.
 
 ## Mandatory start of EVERY session
 Read in order: (1) `BRIEFING.md`, (2) `memory-bank/projectbrief.md`, (3) `memory-bank/techContext.md`, (4) `memory-bank/progress.md`, (5) relevant folder README(s), and (6) applicable `.agents/rules/` and `.agents/skills/`. Confirm current branch, worktree changes and intended scope before editing.
