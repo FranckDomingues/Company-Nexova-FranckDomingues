@@ -5,7 +5,7 @@
 2. `company-choice.md`: selección personal y enfoque del estudiante; propuestas aún no implementadas.
 3. `README.md` y README de cada subcarpeta: responsabilidades técnicas y ubicación del código.
 
-**Corrección según evaluación del profesor (2026-10-26):** el briefing del syllabus oficial es la fuente obligatoria del hito. Aunque el `CONTEXT.md` histórico de este monorepo y el repositorio `Project-FG-Company-Nexova` empleen otra geografía, no prevalecen para esta entrega. No mezclar versiones ni modificar esos archivos históricos fuera del alcance.
+**Fuente obligatoria según evaluación del profesor:** el briefing del syllabus oficial es la autoridad para este hito. Los archivos `CONTEXT.md` históricos no prevalecen para la entrega y permanecen fuera del alcance de modificación.
 
 ## Negocio
 Nexova Solutions es una consultora de RR. HH. y selección de talento, fundada en 2011, con sede en Valencia, España, y oficina de expansión en Miami, Florida, 120 empleados y facturación anual aproximada de US$8 millones. Sus líneas son headhunting, outsourcing de soporte al cliente y formación corporativa. Fuente: `BRIEFING.md`.
