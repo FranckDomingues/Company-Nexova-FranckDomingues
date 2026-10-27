@@ -25,5 +25,5 @@
 Actualizar este archivo al final de cada entrega relevante con hechos verificados, pruebas ejecutadas, pendientes y decisiones; jamás registrar resultados no comprobados.
 
 ## Historial de corrección
-- 2026-10-26: el profesor rechazó la entrega por usar Chile/Argentina y exigió el archivo oficial `nexova-BRIEFING.es.md` del syllabus (Valencia/Miami). Se ajustaron los siete entregables documentales del hito; no se altera el contexto histórico ni el código de aplicación.
+- 2026-10-26: el profesor rechazó la entrega por usar una versión geográfica distinta y exigió el archivo oficial `nexova-BRIEFING.es.md` del syllabus (Valencia/Miami). Se ajustaron los siete entregables documentales del hito; no se altera el contexto histórico ni el código de aplicación.
 - QA de la corrección: pendiente de verificación completa del diff y sincronización Git local; no reutilizar el PASS previo como prueba de estos cambios.
