@@ -1,12 +1,12 @@
 # Propuesta de Arquitectura de Backend — Nexova Solutions
 
 **Estado:** Propuesta técnica para revisión del CTO; no constituye implementación ni aprobación del CTO.  
-**Escenario:** Chile y Argentina.  
+**Escenario:** sede principal en Valencia, España, y oficina de expansión en Miami, Florida, Estados Unidos.
 **Ubicación:** `docs/ARCHITECTURE_PROPOSAL.md` en el monorepo `FranckDomingues/Company-Nexova-FranckDomingues`.
 
 ## 1. Contexto y objetivo
 
-Nexova Solutions es una consultora de recursos humanos y selección de talento que opera en Chile y Argentina. El contexto del repositorio describe tres líneas de negocio: headhunting, soporte externalizado y formación corporativa. Para la primera evolución del backend se toma como caso orientador el soporte externalizado: 30 agentes, resolución media de 48 horas frente a un SLA de 24 horas, y herramientas dispersas como Zendesk legacy, HubSpot, Google Workspace y un ATS antiguo. Estos datos proceden de `CONTEXT.md`, `company-choice.md` y `BRIEFING.md` de Nexova; no representan mediciones nuevas.
+Nexova Solutions es una consultora de recursos humanos y selección de talento con sede principal en Valencia, España, y una oficina de expansión en Miami, Florida, Estados Unidos. El contexto del repositorio describe tres líneas de negocio: headhunting, soporte externalizado y formación corporativa. Para la primera evolución del backend se toma como caso orientador el soporte externalizado: 30 agentes, resolución media de 48 horas frente a un SLA de 24 horas, y herramientas dispersas como Zendesk legacy, HubSpot, Google Workspace y un ATS antiguo. Estos datos proceden de `CONTEXT.md`, `company-choice.md` y `BRIEFING.md` de Nexova; no representan mediciones nuevas.
 
 El objetivo de este documento es fundamentar **cómo organizar** el backend antes de programarlo. El sistema de soporte con IA/RAG es una visión futura; no se afirma que ya exista ni que el backend haya sido desplegado.
 
