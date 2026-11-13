@@ -22,3 +22,11 @@ def get_database() -> TinyDB:
 
 def get_suppliers_table() -> Table:
     return get_database().table("suppliers")
+
+
+def get_users_table() -> Table:
+    return get_database().table("users")
+
+
+def get_profiles_table() -> Table:
+    return get_database().table("profiles")

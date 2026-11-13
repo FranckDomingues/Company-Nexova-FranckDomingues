@@ -3,7 +3,9 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routes.authentication import router as authentication_router
 from app.routes.suppliers import router as suppliers_router
+from app.routes.users import router as users_router
 
 app = FastAPI(
     title="Nexova Solutions API",
@@ -18,10 +20,12 @@ allowed_origins = os.environ.get(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
+app.include_router(authentication_router)
+app.include_router(users_router)
 app.include_router(suppliers_router)
 
 
