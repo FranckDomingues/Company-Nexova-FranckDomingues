@@ -1,12 +1,6 @@
 (() => {
   const API_BASE = window.NEXOVA_API_URL || 'http://127.0.0.1:8000';
-  const categories = [
-    ['job_boards', 'Plataformas de empleo'], ['ats_software', 'Software ATS'],
-    ['assessment_tools', 'Herramientas de evaluación'], ['training_platforms', 'Plataformas de formación'],
-    ['payroll_and_hr_software', 'Nómina y RR. HH.'], ['video_interview', 'Entrevista por video'],
-    ['background_check', 'Verificación de antecedentes'], ['office_and_facilities', 'Oficina e instalaciones'],
-    ['it_and_software_licenses', 'Licencias de software e IT'],
-  ];
+  const { categories, labelFor, escapeHtml, currencyLabel, isRenewalSoon } = window.NexovaSupplierUtils;
   const rows = document.querySelector('#supplier-rows');
   const countryFilter = document.querySelector('#country-filter');
   const categoryFilter = document.querySelector('#category-filter');
@@ -16,9 +10,6 @@
   const rateDialog = document.querySelector('#rate-dialog');
   let suppliers = [];
   let editingRateId = null;
-  const labelFor = value => categories.find(([key]) => key === value)?.[1] || value;
-  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const currencyLabel = supplier => new Intl.NumberFormat('es-ES', { style: 'currency', currency: supplier.currency }).format(supplier.monthly_rate);
   function showMessage(text, isError = false) {
     message.textContent = text;
     message.className = `mt-5 rounded-md border px-4 py-3 text-sm ${isError ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`;
@@ -31,13 +22,6 @@
       throw new Error(detail);
     }
     return response.status === 204 ? null : response.json();
-  }
-  function isRenewalSoon(dateValue) {
-    if (!dateValue) return false;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const renewal = new Date(`${dateValue}T00:00:00`);
-    const days = (renewal - today) / 86400000;
-    return days >= 0 && days <= 60;
   }
   function render() {
     const filtered = suppliers.filter(s => (!countryFilter.value || s.country === countryFilter.value) && (!categoryFilter.value || s.categories.includes(categoryFilter.value)));

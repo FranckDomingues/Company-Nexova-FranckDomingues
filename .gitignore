@@ -1,0 +1,9 @@
+# Python-generated metadata and coverage
+**/*.egg-info/
+**/__pycache__/
+**/.pytest_cache/
+**/.coverage*
+
+# Frontend build, dependencies, and test output
+uis/backoffice/suppliers/node_modules/
+uis/backoffice/suppliers/coverage/

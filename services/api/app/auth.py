@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.hash import bcrypt
+from passlib.hash import bcrypt, bcrypt_sha256
 from tinydb import Query
 from tinydb.table import Table
 
@@ -37,11 +37,16 @@ def token_expiry_minutes() -> int:
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hash(password)
+    # bcrypt truncates input after 72 bytes; the SHA-256 pre-hash variant keeps
+    # the API's documented 128-character password limit meaningful.
+    return bcrypt_sha256.hash(password)
 
 
 def verify_password(password: str, password_hash: str) -> bool:
     try:
+        if password_hash.startswith("$bcrypt-sha256$"):
+            return bcrypt_sha256.verify(password, password_hash)
+        # Preserve authentication for credentials created by earlier releases.
         return bcrypt.verify(password, password_hash)
     except (TypeError, ValueError):
         return False
@@ -66,6 +71,10 @@ def get_current_user(
         raise unauthorized
     try:
         claims = jwt.decode(token, _secret_key(), algorithms=[ALGORITHM])
+        # Tokens minted by this API always expire. Reject externally-signed tokens
+        # that omit exp rather than accidentally accepting an unbounded credential.
+        if "exp" not in claims:
+            raise unauthorized
         subject = claims.get("sub")
         if not isinstance(subject, str) or not subject.isdecimal():
             raise unauthorized

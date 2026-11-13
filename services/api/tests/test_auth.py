@@ -189,3 +189,46 @@ def test_user_and_profile_data_live_only_in_tinydb_tables(client):
     assert users.name == "users" and profiles.name == "profiles"
     assert users.all()[0].keys() == {"id", "email", "hashed_password", "is_active", "role", "created_at"}
     assert profiles.all()[0].keys() == {"id", "user_id", "name", "phone", "address"}
+
+
+def test_registration_password_length_boundaries_and_empty_password(client):
+    assert client.post("/users", json={"email": "empty@example.com", "password": ""}).status_code == 422
+    minimum = client.post("/users", json={"email": "min@example.com", "password": "12345678"})
+    assert minimum.status_code == 201
+    maximum = client.post("/users", json={"email": "max@example.com", "password": "x" * 128})
+    assert maximum.status_code == 201
+    too_long = client.post("/users", json={"email": "long@example.com", "password": "x" * 129})
+    assert too_long.status_code == 422
+
+
+def test_login_empty_unknown_and_inactive_account_failures(client):
+    signup(client)
+    assert client.post("/auth/login", data={"username": "person@example.com", "password": " "}).status_code == 401
+    assert client.post("/auth/login", data={"username": "missing@example.com", "password": "strong-password-123"}).status_code == 401
+    users = client.app.dependency_overrides[get_users_table]()
+    users.update({"is_active": False}, doc_ids=[1])
+    inactive = client.post("/auth/login", data={"username": "person@example.com", "password": "strong-password-123"})
+    assert inactive.status_code == 401
+    assert inactive.json()["detail"] == "Inactive account"
+
+
+def test_tokens_missing_exp_claim_and_expiration_boundary_are_rejected(client):
+    signup(client)
+    missing_exp = jwt.encode({"sub": "1", "iat": 1}, "isolated-test-secret-that-is-long-enough", algorithm=ALGORITHM)
+    assert client.get("/auth/me", headers=headers(missing_exp)).status_code == 401
+    exact_expiry = jwt.encode({"sub": "1", "iat": 1, "exp": 1}, "isolated-test-secret-that-is-long-enough", algorithm=ALGORITHM)
+    assert client.get("/auth/me", headers=headers(exact_expiry)).status_code == 401
+
+
+def test_registration_rolls_back_user_when_profile_insert_fails(client, monkeypatch):
+    users = client.app.dependency_overrides[get_users_table]()
+    profiles = client.app.dependency_overrides[get_profiles_table]()
+
+    def fail_profile_insert(document):
+        raise RuntimeError("test-only profile write failure")
+
+    monkeypatch.setattr(profiles, "insert", fail_profile_insert)
+    with pytest.raises(RuntimeError, match="test-only"):
+        client.post("/users", json={"email": "rollback@example.com", "password": "strong-password-123"})
+    assert users.all() == []
+    assert profiles.all() == []
