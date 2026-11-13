@@ -11,7 +11,16 @@ uv run uvicorn app.main:app --reload
 uv run pytest
 ```
 
-The default TinyDB JSON file is `services/api/data/suppliers.json` (ignored by Git). Set `SUPPLIER_DB_PATH` to use another file. `API_ALLOWED_ORIGINS` accepts comma-separated browser origins; its development default allows ports 5500 on localhost.
+The default TinyDB JSON file is `services/api/data/suppliers.json` (ignored by Git). Set `SUPPLIER_DB_PATH` to use another file. `API_ALLOWED_ORIGINS` accepts comma-separated browser origins; its development default allows ports 5500 on localhost. Configure `JWT_SECRET_KEY` (at least 32 characters) and optionally `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` before starting; there is no committed production secret. User and profile data use only TinyDB tables `users` and `profiles` in that configured file.
+
+## Authentication and accounts
+
+- `POST /users` — public registration; creates an active `user` and one linked profile (optional `name`, `phone`, `address`).
+- `GET /users` — admin-only list; `GET /users/{id}`, `PUT /users/{id}`, and `DELETE /users/{id}` are self/admin. Role and active-status changes are admin-only.
+- `POST /auth/login` — OAuth2 form (`username` is email; `password`); returns a bearer JWT.
+- `GET /auth/me`, `GET /profiles/me`, and `PUT /profiles/me` — authenticated account/profile endpoints.
+
+Use `Authorization: Bearer <access_token>`. Passwords are bcrypt-hashed. JWTs are stateless, signed with HS256 and resolved against active TinyDB users.
 
 ## Supplier API
 
