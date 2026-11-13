@@ -6,7 +6,7 @@
 
 ## Independent testability
 
-A clean clone of this branch is independently testable. `services/api/pyproject.toml` declares FastAPI, multipart, Uvicorn, and dev test-client dependencies with Python >=3.12. No credentials or external services are required. API tests use local fixtures and mocks; dashboard tests use Node's built-in VM/assert libraries; original Python CSV tests use an isolated environment and pandas. Commands are in `REPRODUCTION.md`.
+A clean clone of this branch is independently testable. `services/api/pyproject.toml` declares FastAPI, multipart, Uvicorn, and dev test-client dependencies with Python >=3.12. No credentials or external services are required. API tests use local fixtures and mocks; dashboard tests use Node's built-in VM/assert libraries; original Python CSV tests use an isolated environment and pandas. This was confirmed by cloning the pushed branch into a fresh temporary directory and rerunning every suite (API 12, analyzer 14, CSV cleaner 9, dashboard 5); see `TEST_RESULTS.md`. Commands are in `REPRODUCTION.md`.
 
 No separate Next.js framework/package exists, so Next.js build/type/lint checks are not applicable; the static dashboard is syntax checked and has focused automated tests. No database is needed: selected result storage is in-memory for this analysis app.
 

@@ -25,6 +25,10 @@
 | Existing configured lint/type/build | NOT AVAILABLE | No Next.js app/package manifest, TS compiler, or separate lint/build command exists for this static dashboard/API closure. No such checks are represented as passing. |
 | Permission failure as OS user | PARTIAL | Deterministically mocked read/write `OSError` tests pass; live chmod is environment-dependent. |
 
+## Clean-clone verification
+
+After push, cloned `feature/error-handling-audit` into a new temporary directory, installed `services/api[dev]` and pandas in a fresh Python 3.12 virtual environment, then reran all three Python suites, the dashboard harness, and `git diff --check`. Results: API 12/12, analyzer 14/14, original CSV cleaner 9/9, dashboard 5/5; all commands succeeded without access to another branch, credentials, or local source files.
+
 ## First-run and compatibility notes
 
 A first API test discovery attempted to use the then-current Starlette `TestClient` with legacy `httpx`; newer Starlette requires `httpx2`. The dependency was corrected in `services/api/pyproject.toml` to the published compatible major version before final test reruns. A test initially expected an inappropriate export route method and got 405; that expectation was removed. Python dependencies were installed in disposable uv environments; no credentials or production services were used.
