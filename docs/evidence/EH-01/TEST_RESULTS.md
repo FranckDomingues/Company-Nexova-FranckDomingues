@@ -11,6 +11,15 @@
 - Static JS site has no npm manifest or frontend test runner; no automated browser suite was configured.
 - No FastAPI tests or route modules existed on the selected base.
 
+## EH-01C tests executed
+
+| Check | Result | Detail |
+|---|---|---|
+| Outbound webhook adapter | PASS | `PYTHONPATH=services/api uv run --project services/api --extra dev python -m unittest discover -s services/api/tests -p 'test_incident_webhook.py' -v` — 12 tests pass using an in-process HTTP receiver/refused loopback port/local stalled TLS handshake. Covers successful aggregate POST, 204, disabled/config validation, connection refusal, connect/read timeout, 400/429/500/503 classification, malformed/unexpected/oversized response, sensitive log canaries, and one-shot no-retry behavior. |
+| Optional failure isolation | PASS | `test_analysis_succeeds_when_optional_notification_fails` in API suite posts through actual adapter to a refused local port and verifies 200 analysis, preserved aggregate metrics, and safe `notification: failed`. |
+| Full API regression suite | PASS | `PYTHONPATH=services/api uv run --project services/api --extra dev python -m unittest discover -s services/api/tests -v` — 25 tests pass (including previous API regressions and 12 webhook adapter tests). |
+| Full EH-01 regression suites | PASS | API 25, analyzer 14, CSV cleaner 9, dashboard 5; all passed. Python/JS syntax checks and `git diff --check` passed. Exact final commands recorded in `REPRODUCTION.md`. |
+
 ## EH-01B tests executed
 
 | Check | Result | Detail |
@@ -27,7 +36,7 @@
 
 ## Clean-clone verification
 
-After push, cloned `feature/error-handling-audit` into a new temporary directory, installed `services/api[dev]` and pandas in a fresh Python 3.12 virtual environment, then reran all three Python suites, the dashboard harness, and `git diff --check`. Results: API 12/12, analyzer 14/14, original CSV cleaner 9/9, dashboard 5/5; all commands succeeded without access to another branch, credentials, or local source files.
+EH-01B clean-clone evidence predates EH-01C and must not be interpreted as validating EH-01C. EH-01C local verification passes (API 25, analyzer 14, CSV cleaner 9, dashboard 5; syntax checks and `git diff --check` pass). A clean clone of the final EH-01C commit is still pending because commit/push has not yet occurred; no clean-clone PASS is claimed for EH-01C.
 
 ## First-run and compatibility notes
 

@@ -1,4 +1,4 @@
-# EH-01B Upstream Provenance
+# EH-01C Upstream Provenance
 
 ## Source and selection
 
@@ -21,7 +21,7 @@ The pre-existing `skills/data-analysis/...` EH-01 script, tests, and evidence we
 - `origin/feature/auth-api` and its database/auth/supplier stack were reviewed but were not needed for the incident-analysis handler. The selected incident app has no authentication routes; this branch does not claim 401/403 enforcement tests.
 - `origin/feature/backend-foundation` and `origin/feature/supplier-directory` were not integrated because their setup/routes are not dependencies of the selected API.
 - `origin/feature/centralized-incident-manager` was not selected: it introduces separate CRUD/database behavior outside the smallest coherent closure.
-- No external HTTP integration exists in the included app; external-service failure behavior is genuinely not applicable.
+- No suitable pre-existing server-to-server external HTTP integration existed in the included app or inspected source branches. EH-01C adds only `services/api/app/notifications/incident_webhook.py`, a new optional, aggregate-only adapter as the narrowly scoped fallback explicitly required by the milestone. The route and adapter tests are authored in this branch; no external integration code was copied from another branch. `httpx>=0.28.1,<1` was added as the sole runtime dependency required for the real HTTP client; `httpx2>=2,<3` remains only as the dev-only Starlette TestClient compatibility dependency.
 
 ## Verification boundary
 

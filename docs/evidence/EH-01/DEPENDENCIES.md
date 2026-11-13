@@ -1,4 +1,4 @@
-# EH-01B Base and Upstream Dependencies
+# EH-01C Base and Upstream Dependencies
 
 ## Selected base and integration
 
@@ -6,7 +6,7 @@
 
 ## Independent testability
 
-A clean clone of this branch is independently testable. `services/api/pyproject.toml` declares FastAPI, multipart, Uvicorn, and dev test-client dependencies with Python >=3.12. No credentials or external services are required. API tests use local fixtures and mocks; dashboard tests use Node's built-in VM/assert libraries; original Python CSV tests use an isolated environment and pandas. This was confirmed by cloning the pushed branch into a fresh temporary directory and rerunning every suite (API 12, analyzer 14, CSV cleaner 9, dashboard 5); see `TEST_RESULTS.md`. Commands are in `REPRODUCTION.md`.
+A clean clone of this branch is independently testable. `services/api/pyproject.toml` declares FastAPI, HTTPX runtime, multipart, Uvicorn, and dev test-client dependencies with Python >=3.12. No credentials or external services are required. API tests use local fixtures and mocks; dashboard tests use Node's built-in VM/assert libraries; original Python CSV tests use an isolated environment and pandas. EH-01B had clean-clone evidence (API 12, analyzer 14, CSV cleaner 9, dashboard 5). EH-01C adds runtime HTTPX and tests in the same self-contained project; fresh-clone verification against the EH-01C commit remains pending until commit/push. Current local runs pass API 25, analyzer 14, CSV cleaner 9, dashboard 5; see `TEST_RESULTS.md`. Commands are in `REPRODUCTION.md`.
 
 No separate Next.js framework/package exists, so Next.js build/type/lint checks are not applicable; the static dashboard is syntax checked and has focused automated tests. No database is needed: selected result storage is in-memory for this analysis app.
 
@@ -14,5 +14,5 @@ No separate Next.js framework/package exists, so Next.js build/type/lint checks 
 
 - The auth/supplier app (`origin/feature/auth-api`, `origin/feature/backend-foundation`) was not integrated; selected incident routes have no auth, so no 401/403 route behavior can be tested or claimed.
 - The supplier-directory async UI and centralized incident manager are different product modules and remain outside this minimal integration. They are not prerequisites for the included dashboard/API scenario and were not tested.
-- No outbound external API integration exists in the included app; EH-B04 is N/A rather than a fabricated implementation.
+- No outbound integration pre-existed in the included app. EH-01C adds a minimal, disclosed optional HTTP webhook adapter for aggregate incident-analysis results; this is the only new integration and does not add a queue/service or credentials. `httpx>=0.28.1,<1` is a runtime dependency; `httpx2` remains in the dev extra for Starlette TestClient compatibility.
 - This repository does not contain a Next.js application; no Next.js-specific framework coverage is claimed.

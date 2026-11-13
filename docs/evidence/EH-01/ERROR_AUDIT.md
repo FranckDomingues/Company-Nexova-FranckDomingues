@@ -13,7 +13,7 @@ The selected `main` base is a static public site plus Python utility; it has no 
 | High (fixed) | `services/api/app/api/routes/incidents.py` | Upload file I/O errors could escape as unhandled failures; parse failures could retain chained context; export missing IDs need 404. | Scoped upload error handling (400/413/500), safe logging, no chained parse details, existing export 404; regression tests. |
 | Medium (fixed) | `uis/backoffice/dashboard.js` | Successful response JSON parse could reveal raw parser details; arbitrary thrown messages could be surfaced. | Added narrow JSON parse/shape checks and fixed Spanish fallback for unexpected errors; loading cleanup in `finally`; automated request regressions. |
 | Low | `uis/website/validation.js:4,40-43` | Logs structural page-integration diagnostics only; messages contain fixed element IDs. | Retained; no user values or secrets logged. |
-| N/A | `services/api/app` | No outbound external API/client integration or auth router exists in the selected incident-analysis closure. | No fake integration added; external-service handling and auth-specific 401/403 coverage are not claimed. |
+| Medium (fixed EH-01C) | `services/api/app/notifications/incident_webhook.py`; `services/api/app/api/routes/incidents.py` | The selected analysis API originally had no outbound HTTP integration, leaving EH-B04 N/A. | Added a clearly disclosed optional aggregate-only webhook adapter. Bounded timeouts and response parsing, safe error categories, no retries/redirects, privacy-safe logs, HTTPS for remote endpoints, loopback-only local HTTP. Analysis success is not changed by optional delivery failure. See `EXTERNAL_API_HANDLING.md`. |
 
 ## Enumerated paths
 
@@ -21,10 +21,10 @@ The selected `main` base is a static public site plus Python utility; it has no 
 - **Async data operations:** dashboard upload analysis and export; public form validation remains synchronous. Analysis deduplicates overlapping submissions and clears state in `finally`.
 - **Error boundary:** no React/Next.js app or React error boundary exists; the actual included static dashboard handles request boundaries.
 - **Backend routes/services:** `services/api/app/main.py` includes health and incident router; route modules implement analysis upload and in-memory aggregate export. Tests use FastAPI `TestClient`.
-- **External API, exception handlers, logging:** no external API. API handlers cover validation, HTTP and unexpected exceptions; logs record exception class, not raw message/path/content. JS no console error output from the async flow.
+- **External API, exception handlers, logging:** EH-01C adds an optional outbound incident-result HTTP webhook (new adapter, not a pre-existing upstream integration). It sends aggregate metrics only, is disabled by default, and logs only stable category/status. API handlers cover validation, HTTP and unexpected exceptions; logs record exception class, not raw message/path/content. JS no console error output from the async flow.
 - **File/CSV operations:** original pandas cleaner and integrated `scripts/analyze.py`; API writes uploads to temporary directories; analyzer export uses atomic replacement.
 - **CLI entry points/tests:** original CLI has standard-library unittest coverage; analyzer has its own tests; API uses FastAPI test client; dashboard harness uses Node built-ins. No Next.js build/lint/type check applies.
 
 ## Checklist status
 
-See [CHECKLIST.md](CHECKLIST.md) for each of the 23 required IDs and evidence. Checklist dispositions now apply to the integrated feature scope, not to `main` alone. Auth-specific 401/403 and outbound external-service errors are not applicable because those paths do not exist in the integrated incident analysis application.
+See [CHECKLIST.md](CHECKLIST.md) for each of the 23 required IDs and evidence. Checklist dispositions now apply to the integrated feature scope, not to `main` alone. Auth-specific 401/403 routes remain outside this integrated incident-analysis application. EH-B04 is now covered by the optional adapter described above; external integration is not claimed to have pre-existed.

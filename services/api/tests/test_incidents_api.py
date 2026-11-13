@@ -42,6 +42,7 @@ class TestIncidentsAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
+        self.assertEqual(data["notification"], "disabled")
         self.assertEqual(data["total"], 100)
         self.assertEqual(data["valid"], 96)
         self.assertEqual(data["invalid"], 4)
@@ -49,6 +50,20 @@ class TestIncidentsAPI(unittest.TestCase):
             data["metrics"]["average_satisfaction"], "3.84"
         )
         self.assertEqual(len(data["analysis_id"]), 32)
+
+    def test_analysis_succeeds_when_optional_notification_fails(self):
+        with mock.patch.dict(
+            "os.environ",
+            {
+                "NEXOVA_INCIDENT_WEBHOOK_ENABLED": "true",
+                "NEXOVA_INCIDENT_WEBHOOK_URL": "http://127.0.0.1:1/notify",
+            },
+        ):
+            response = self.upload()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["notification"], "failed")
+        self.assertEqual(response.json()["valid"], 96)
+        self.assertEqual(response.json()["metrics"]["average_satisfaction"], "3.84")
 
     def test_export(self):
         analysis = self.upload().json()

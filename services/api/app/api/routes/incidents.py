@@ -1,5 +1,6 @@
 """Nexova incident analysis HTTP endpoint."""
 
+import asyncio
 import csv
 import importlib.util
 import logging
@@ -8,6 +9,10 @@ from tempfile import TemporaryDirectory
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from app.api.routes.incident_results import save_result
+from app.notifications.incident_webhook import (
+    HttpIncidentWebhookAdapter,
+    IncidentResultNotification,
+)
 
 router = APIRouter(prefix="/api/incidents", tags=["Incidents"])
 
@@ -60,12 +65,27 @@ async def analyze_incidents(file: UploadFile = File(...)):
 
             analysis_id = save_result(results)
 
+            # Notification is optional and never changes the analysis outcome.
+            delivery = await asyncio.to_thread(
+                HttpIncidentWebhookAdapter().deliver,
+                IncidentResultNotification(
+                    analysis_id=analysis_id,
+                    total_records=int(summary["total"]),
+                    valid_records=int(summary["valid"]),
+                    invalid_records=int(summary["invalid"]),
+                    average_satisfaction=results.get("average_satisfaction"),
+                ),
+            )
+
             return {
                 "analysis_id": analysis_id,
                 "total": summary["total"],
                 "valid": summary["valid"],
                 "invalid": summary["invalid"],
                 "metrics": results,
+                "notification": "delivered" if delivery.delivered else (
+                    "disabled" if delivery.category.value == "disabled" else "failed"
+                ),
             }
 
     except (ValueError, UnicodeError, csv.Error) as exc:

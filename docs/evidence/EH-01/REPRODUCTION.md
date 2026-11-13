@@ -1,6 +1,6 @@
 # EH-01B Reproduction (fresh Codespace)
 
-A clean checkout of `feature/error-handling-audit` contains all milestone code/tests; no sibling branch or secret is needed. Commands assume Ubuntu Codespaces with Python 3.12+ and Node 18+.
+After the EH-01C commit is pushed, a clean checkout of `feature/error-handling-audit` contains all milestone code/tests; no sibling branch or secret is needed. Commands assume Ubuntu Codespaces with Python 3.12+ and Node 18+.
 
 ## Environment and dependencies
 
@@ -17,16 +17,56 @@ python -m pip install -e 'services/api[dev]' pandas
 export PYTHONPATH="$PWD/services/api"
 ```
 
+## Optional webhook integration demonstration
+
+No public endpoint or credential is needed. Set these variables to enable delivery to a local HTTP receiver only; remote endpoints must use HTTPS.
+
+```bash
+export NEXOVA_INCIDENT_WEBHOOK_ENABLED=true
+export NEXOVA_INCIDENT_WEBHOOK_URL=http://127.0.0.1:8765/notify
+```
+
+Start the API in one terminal and upload the sample CSV from another terminal (the receiver is optional; if absent, analysis still returns success with `notification: failed`):
+
+```bash
+uvicorn app.main:app --app-dir services/api --host 127.0.0.1 --port 8000
+# second terminal
+curl -i -F 'file=@incidents-analysis/incidents-nexova.csv' http://127.0.0.1:8000/api/incidents/analyze
+```
+
+To observe successful delivery locally, save this dependency-free receiver as `/tmp/nexova-webhook.py` and run it (its output shows only payload keys and aggregate values):
+
+```bash
+cat > /tmp/nexova-webhook.py <<'PY'
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import json
+class Receiver(BaseHTTPRequestHandler):
+    def do_POST(self):
+        payload = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
+        print({'event': payload.get('event'), 'metric_keys': list(payload.get('metrics', {}))})
+        body = b'{"accepted":true}'
+        self.send_response(200); self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+    def log_message(self, *_args): pass
+HTTPServer(('127.0.0.1', 8765), Receiver).serve_forever()
+PY
+python /tmp/nexova-webhook.py
+```
+
+For deterministic success/failure variants and no-retry assertions, run the local-server tests below; no external network or credentials are used.
+
 ## Run regression tests
 
 ```bash
 source .venv/bin/activate
-python -m unittest discover -s services/api/tests -v
-python -m unittest discover -s scripts/tests -v
-python -m unittest discover -s skills/data-analysis/tests -v
+uv run --project services/api --extra dev --with pandas python -m unittest discover -s services/api/tests -v
+# Optional outbound integration alone:
+uv run --project services/api --extra dev python -m unittest discover -s services/api/tests -p 'test_incident_webhook.py' -v
+uv run --with pandas python -m unittest discover -s scripts/tests -v
+uv run --with pandas python -m unittest discover -s skills/data-analysis/tests -v
 node uis/backoffice/tests/dashboard.test.js
 
-python -m py_compile skills/data-analysis/scripts/pandas_clean.py skills/data-analysis/tests/test_pandas_clean.py scripts/analyze.py scripts/tests/test_analyze.py services/api/app/main.py services/api/app/api/routes/incidents.py services/api/tests/test_incidents_api.py
+uv run --with pandas python -m py_compile skills/data-analysis/scripts/pandas_clean.py skills/data-analysis/tests/test_pandas_clean.py scripts/analyze.py scripts/tests/test_analyze.py services/api/app/main.py services/api/app/api/routes/incidents.py services/api/app/notifications/incident_webhook.py services/api/tests/test_incidents_api.py services/api/tests/test_incident_webhook.py
 node --check uis/website/validation.js
 node --check uis/backoffice/dashboard.js
 node --check uis/backoffice/tests/dashboard.test.js
