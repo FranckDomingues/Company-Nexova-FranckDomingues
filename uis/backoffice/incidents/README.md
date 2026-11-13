@@ -1,0 +1,7 @@
+# Nexova incident manager UI
+
+A framework-free responsive operations UI integrated with the existing backoffice navigation. Start the API from the repository root with `uvicorn app.main:app --app-dir services/api --reload --host 127.0.0.1 --port 8000`, then serve the repository root with `python -m http.server 5500`. Open `http://127.0.0.1:5500/uis/backoffice/` and choose Centralized incident manager. The UI expects the API at `http://127.0.0.1:8000/api`; set `window.NEXOVA_API_URL` before `app.js` to override it. For a clean SQLite setup, use `services/api/README.md` to create a venv, install `packages/shared` and `services/api[test]`, then apply the migration and seed with `DATABASE_URL=sqlite:////absolute/path/to/incidents.db` set for both API and seed process. The browser smoke test with a non-default API URL should open `/uis/backoffice/incidents/?api=http%3A%2F%2F127.0.0.1%3A8765%2Fapi` directly; the backoffice landing-page link currently does not forward query parameters.
+
+Views: summary dashboard, filtered incident queue, validated registration form. API failures are handled without leaking server internals; failed status updates restore the previous visible status.
+
+Run UI interaction tests: `cd uis/backoffice/incidents && npm ci && npm test`. Tests cover required-field validation, safe API failures, loading/submission protection, branch highlighting, successful reset/confirmation, list retry/empty state, and status-update rollback using jsdom.
