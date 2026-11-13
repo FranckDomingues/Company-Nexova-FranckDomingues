@@ -9,5 +9,5 @@
     "rootDir": "src",
     "skipLibCheck": true
   },
-  "include": ["src/supplier-utils.ts"]
+  "include": ["src/supplier-utils.ts", "src/auth-session.ts"]
 }

@@ -1,6 +1,12 @@
 (() => {
   const API_BASE = window.NEXOVA_API_URL || 'http://127.0.0.1:8000';
   const { categories, labelFor, escapeHtml, currencyLabel, isRenewalSoon } = window.NexovaSupplierUtils;
+  const auth = window.NexovaAuth.createAuthSession({ apiBase: API_BASE });
+  const loginGate = document.querySelector('#login-gate');
+  const loginForm = document.querySelector('#login-form');
+  const loginError = document.querySelector('#login-error');
+  const authenticatedApp = document.querySelector('#authenticated-app');
+  const accountTools = document.querySelector('#account-tools');
   const rows = document.querySelector('#supplier-rows');
   const countryFilter = document.querySelector('#country-filter');
   const categoryFilter = document.querySelector('#category-filter');
@@ -10,12 +16,48 @@
   const rateDialog = document.querySelector('#rate-dialog');
   let suppliers = [];
   let editingRateId = null;
+  function showAuthenticatedApp(account) {
+    loginGate.hidden = true;
+    authenticatedApp.hidden = false;
+    accountTools.hidden = false;
+    document.querySelector('#account-email').textContent = account.email;
+  }
+  function showLoginGate() {
+    auth.logout();
+    loginGate.hidden = false;
+    authenticatedApp.hidden = true;
+    accountTools.hidden = true;
+    rows.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Inicia sesión para consultar proveedores.</td></tr>';
+  }
+  loginForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    loginError.textContent = '';
+    const data = new FormData(loginForm);
+    try {
+      const account = await auth.login({ username: data.get('username'), password: data.get('password') });
+      loginForm.reset();
+      showAuthenticatedApp(account);
+      await load();
+    } catch (error) {
+      loginError.textContent = error.message;
+    }
+  });
+  document.querySelector('#logout-button').addEventListener('click', () => {
+    showLoginGate();
+    showMessage('Sesión cerrada.');
+  });
   function showMessage(text, isError = false) {
     message.textContent = text;
     message.className = `mt-5 rounded-md border px-4 py-3 text-sm ${isError ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`;
   }
   async function api(path, options = {}) {
-    const response = await fetch(`${API_BASE}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+    const authorization = auth.getAuthorizationHeader();
+    if (!authorization) { showLoginGate(); throw new Error('Tu sesión ha expirado. Inicia sesión de nuevo.'); }
+    const response = await fetch(`${API_BASE}${path}`, { ...options, headers: { 'Content-Type': 'application/json', Authorization: authorization, ...(options.headers || {}) } });
+    if (response.status === 401) {
+      showLoginGate();
+      throw new Error('La sesión ya no es válida. Inicia sesión de nuevo.');
+    }
     if (!response.ok) {
       let detail = `Error de API (${response.status})`;
       try { const payload = await response.json(); detail = Array.isArray(payload.detail) ? payload.detail.map(e => `${e.loc.slice(1).join('.')}: ${e.msg}`).join('; ') : payload.detail || detail; } catch { /* response without JSON */ }
@@ -81,5 +123,5 @@
       suppliers = suppliers.map(s => s.id === updated.id ? updated : s); rateDialog.close(); rateForm.reset(); render(); showMessage(`Tarifa de ${updated.name} actualizada.`);
     } catch (error) { document.querySelector('#rate-error').textContent = error.message; }
   });
-  load();
+  showLoginGate();
 })();

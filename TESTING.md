@@ -26,7 +26,17 @@ JWTs de borde se firman con claims fijos; no se duerme ni depende de esperas de 
 | `app/routes/users.py` usuarios/perfiles | Registro, perfil enlazado, lectura/actualización propia y operaciones administrativas: `test_profile_me_and_user_ownership_and_admin_operations`, `test_user_delete_own_and_linked_profile_and_user_crud`. | Contraseñas 0/8/128/129, updates parciales y normalización de perfil. | Duplicados, roles inválidos, 401/403 por identidad/rol, registros inexistentes y fallo de persistencia/rollback. |
 | `app/routes/suppliers.py` proveedores | Crear/listar/detalle/eliminar y cambios tasa/estado: `services/api/tests/test_suppliers.py`. | Filtros vacíos, filtros por país/categoría, cantidades positivas y seed idempotente. | Payload/enums inválidos, ID inexistente, 401/403, JWT expirado o malformado. |
 
-### Matriz FE-019
+### Matriz AUTH-088 frontend y FE-019
+
+| Función real TS | Happy path | Edge / failure |
+|---|---|---|
+| `validateLoginInput` | Correo válido con espacios periféricos | Correo ausente/no válido, contraseña vacía, tipos incorrectos |
+| `getTokenExpiration` | JWT con `exp` numérico finito | `exp` ausente/no numérico, payload inválido (base64/JSON/no objeto), token malformado |
+| `isTokenExpired` | Expiración futura | Frontera inclusiva exacta, reloj inválido y JWT malformado/no expirable |
+| `createAuthSession` | POST OAuth2 form, lectura bearer `/auth/me`, cuenta y header autorizador | Credenciales inválidas, token incorrecto/expirado, cuenta `/auth/me` fallida/malformada, logout y expiración con reloj controlado; se limpia la sesión en fallos |
+
+El token solo vive en el cierre de `createAuthSession`, nunca en localStorage/sessionStorage. El frontend decodifica `exp` solo como comprobación UX y no valida firma: `/auth/me` y el resto de la API son autoridad. Todas las llamadas del directorio incluyen `Authorization: Bearer`; 401 devuelve al gate de login. `index.html` carga el bundle de auth antes del directorio.
+
 
 | Utilidad existente y consumida en la página | Camino feliz | Fallo/borde |
 |---|---|---|
@@ -60,13 +70,15 @@ Las coberturas Python deben correr una después de otra porque usan el mismo arc
 
 | Suite/criterio | Comando | Resultado |
 |---|---|---|
+| AUTH-088 frontend | `cd uis/backoffice/suppliers && npm test` | 2 suites, 11 tests passed; statements 97.11%, branches 91.86%, functions 94.73%, lines 98.82% |
+| Bundles navegador | `cd uis/backoffice/suppliers && npm run build` | TypeScript + bundles clásicos `dist/supplier-utils.js` y `dist/auth-session.js` generados correctamente |
 | FastAPI completo | `cd services/api && uv run pytest -q` | 30 passed, 0 failed; 1 warning externo deprecación `httpx` en Starlette TestClient |
 | AUTH-088 | `uv run pytest --cov=app.auth --cov=app.routes.authentication --cov-report=term-missing` | 91% combinado; `app/auth.py` 89%, `app/routes/authentication.py` 97% |
 | API-042 usuarios/perfiles | `uv run pytest --cov=app.routes.users --cov-report=term-missing` | 87% |
 | API-042 proveedores | `uv run pytest --cov=app.routes.suppliers --cov-report=term-missing` | 96% |
-| FE-019 | `npm test` (`jest --coverage --runInBand`) | 1 suite, 4 tests passed; statements 96.42%, branches 91.3%, functions 100%, lines 95.45% |
+| AUTH-088 frontend + FE-019 | `npm test` (`jest --coverage --runInBand`) | 2 suites, 11 tests passed; statements 97.11%, branches 91.86%, functions 94.73%, lines 98.82% |
 | Bundle | `npm run build` | TSC + generación del bundle browser ejecutadas correctamente |
-| Browser smoke test | Abrir `uis/backoffice/index.html` | Antes: error uncaught porque el UMD no asignaba `window.NexovaSupplierUtils` en script clásico. Corregido build. Después: no pageError; global expone categorías, labelFor, escapeHtml, currencyLabel, isRenewalSoon; 15 filas, labels localizados y tarifas renderizadas. El fixture no tiene renovaciones próximas; el comportamiento de resaltado fecha se comprueba determinísticamente en Jest. |
+| Browser smoke test | Abrir `uis/backoffice/index.html` | Página abre sin errores uncaught, scripts cargan los bundles y muestra el gate de login. No se llamó API desde `file://`; Jest verifica la integración de login y `/auth/me` con fetch controlado. |
 
 ## Bugs y hallazgos de casos límite (revisión asistida por IA)
 

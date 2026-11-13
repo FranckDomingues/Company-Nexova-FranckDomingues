@@ -6,7 +6,7 @@
 
 El README contiene **28 casillas Markdown explícitas**: 24 casillas fuera de la lista TypeScript, 1 casilla Jest de cobertura y 3 subcasillas de happy/edge/failure (incluye además 3 extras dentro de su sección). La tabla enumera las 28 casillas evaluables por el milestone principal y la sección extra se evalúa por separado para no contarla dos veces. No deben confundirse con las “28 tareas” mostradas por el portal: no contamos con una exportación del portal para mapearlas individualmente. La tabla siguiente corresponde literalmente a esas 28 casillas fuente; API-042 y FE-019 también se informan como extras solicitados.
 
-**Resultado: 26 PASS y 2 NO APLICA condicionales** (no existen utilidades TypeScript de autenticación). Jest sí configura y prueba utilidades TypeScript reales del dominio proveedores, lo que satisface FE-019; estos NO APLICA no son fallos. No hay un requisito Swagger `/docs` en este README. Las filas 21–28 corresponden a las ocho casillas de evaluación de la fuente y se muestran separadas aunque algunas corroboran evidencia ya citada.
+**Resultado: 28 PASS y 0 NO APLICA.** Se implementó un flujo frontend de autenticación TypeScript real y sus utilidades se cubren en Jest; no aplica el estado condicional porque ya hay funciones TS de auth. No hay un requisito Swagger `/docs` en este README. Las filas 21–28 corresponden a las ocho casillas de evaluación de la fuente y se muestran separadas aunque algunas corroboran evidencia ya citada.
 
 | # | Casilla atómica del README | Estado | Evidencia concreta |
 |---:|---|---|---|
@@ -21,9 +21,9 @@ El README contiene **28 casillas Markdown explícitas**: 24 casillas fuera de la
 | 9 | `uv run pytest` pasa desde raíz FastAPI | PASS | `services/api`: 30 passed, 0 failed |
 | 10 | Cobertura auth ≥70% | PASS | 91% combinado: `app/auth.py` 89%, `app/routes/authentication.py` 97% |
 | 11 | Condicional: configurar Jest en raíz del proyecto TS | PASS | `uis/backoffice/suppliers/jest.config.cjs`, `package.json`, `tsconfig.json` |
-| 12 | Tests de funciones utilitarias TS relacionadas con auth | NO APLICA | No hay utilidades TypeScript de auth; las utilidades TS existentes son de proveedores. No se inventaron funciones. |
-| 13 | Por cada función TS de auth, happy y failure | NO APLICA | No existen funciones TS de auth a las que aplicar el requisito; las utilidades reales de proveedor se prueban para FE-019. |
-| 14 | Jest pasa con `--coverage` | PASS | `npm test` ejecuta `jest --coverage --runInBand`: 1 suite, 4 tests |
+| 12 | Tests de funciones utilitarias TS relacionadas con auth | PASS | `uis/backoffice/suppliers/src/auth-session.test.ts`: validación de inputs, extracción advisory de `exp`, expiración, sesión in-memory y verificación `/auth/me`. |
+| 13 | Por cada función TS de auth, happy y failure | PASS | `validateLoginInput`, `getTokenExpiration`, `isTokenExpired`, `createAuthSession`: tests happy/edge/failure, con reloj y fetch controlados. |
+| 14 | Jest pasa con `--coverage` | PASS | `cd uis/backoffice/suppliers && npm test`: 2 suites, 11 tests; coverage global statements 97.11%, branches 91.86%, functions 94.73%, lines 98.82% |
 | 15 | Usar IA para identificar casos límite omitidos | PASS | `TESTING.md`, sección «Bugs y hallazgos de casos límite» |
 | 16 | IA para boilerplate y revisión/entendimiento de cada test | PASS | Tests contrastados con comportamiento real; decisiones y matrices en `TESTING.md` |
 | 17 | Corregir y documentar bug revelado por tests | PASS | Bugs bcrypt límite 72 bytes y JWT sin `exp`, con regresiones documentadas en `TESTING.md` y pruebas |
@@ -35,21 +35,22 @@ El README contiene **28 casillas Markdown explícitas**: 24 casillas fuera de la
 | 23 | Evaluación: happy/edge/failure para cada endpoint auth | PASS | Evidencia en criterios 5–8 y matriz de `TESTING.md` |
 | 24 | Evaluación: auth coverage ≥70% | PASS | 91% combinado |
 | 25 | Evaluación: aserciones de lógica, no serialización/framework | PASS | Reglas, permisos, hashing, claims y estado persistido; no internals de FastAPI |
-| 26 | Evaluación: si hay utilidades TypeScript, Jest existe y pasa | PASS | TS real de proveedores está cubierto; `npm test` pasa con coverage |
+| 26 | Evaluación: si hay utilidades TypeScript, Jest existe y pasa | PASS | TS de auth y proveedores está cubierto; 11 tests pasan con coverage |
 | 27 | Evaluación: flujo IA evidente en `TESTING.md` | PASS | Casos límite y bugs descubiertos descritos en `TESTING.md` |
 | 28 | Evaluación: nombres/estructura claros y comentarios breves | PASS | Tests con nombres descriptivos y estructura consistente |
 
-> Nota de conteo: los puntos 12–13 son condicionales y dirigidos a utilidades TypeScript de autenticación. No existen en este repositorio, por lo que se marcan NO APLICA, no FAIL. Las utilidades reales TypeScript del backoffice sí se testean para FE-019 y satisfacen el criterio general de evaluación condicional.
+> Nota de conteo: los puntos 12–13 son condicionales y se cumplen porque ahora existe el módulo real `auth-session.ts`, utilizado por el backoffice y probado con happy/edge/failure. Los extras API-042 y FE-019 permanecen identificados por separado.
 
 ## Evidencia de tickets adicionales y verificación runtime
 
 | Área | Resultado ejecutado |
 |---|---|
+| AUTH-088 frontend | `auth-session.ts` con gate UI, login OAuth2, verificación `/auth/me`, Bearer en API y sesión en memoria; Jest 11/11, 97.11% statements, 91.86% branches, 94.73% functions y 98.82% lines. |
 | API-042 usuarios/perfiles (`app/routes/users.py`) | **87%**, por encima de 60%; `uv run pytest --cov=app.routes.users --cov-report=term-missing` |
 | API-042 proveedores (`app/routes/suppliers.py`) | **96%**, por encima de 60%; `uv run pytest --cov=app.routes.suppliers --cov-report=term-missing` |
-| FE-019 | Cuatro utilidades reales: `labelFor`, `escapeHtml`, `currencyLabel`, `isRenewalSoon`; Jest 1 suite / 4 tests; statements 96.42%, branches 91.3%, functions 100%, lines 95.45% |
-| Browser smoke | Inicialmente fallaba: bundle UMD no publicaba `window.NexovaSupplierUtils`, generando error uncaught al desestructurar en `supplier-directory.js`. Corregido el build: sin errores de página; el global expone las cinco propiedades consumidas; directorio renderiza 15 filas, etiquetas de categoría y montos EUR/USD. El fixture no contiene renovación futura; resaltado de ventana se verifica con fechas deterministas en Jest. |
-| Orden y bundle | `index.html` carga `suppliers/dist/supplier-utils.js` antes de `supplier-directory.js` (`defer` en ambos); `npm run build` crea el bundle clásico desde el TypeScript existente. No se sustituyó producción por código de prueba. |
+| FE-019 | Cuatro utilidades reales: `labelFor`, `escapeHtml`, `currencyLabel`, `isRenewalSoon`; Jest comparte 2 suites / 11 tests con AUTH-088 frontend; cobertura global statements 97.11%, branches 91.86%, functions 94.73%, lines 98.82% |
+| Browser smoke | Con la nueva frontera de login, la página carga en navegador y muestra el formulario sin errores uncaught de scripts. El test Jest de `createAuthSession` comprueba login real por contrato, `GET /auth/me`, fallos y encabezados. La lista de proveedores ahora requiere autorización API; el servidor sigue siendo autoridad para permisos. |
+| Orden y bundle | `index.html` carga `supplier-utils.js` y `auth-session.js` antes de `supplier-directory.js` (`defer`); `npm run build` crea ambos bundles clásicos desde sus fuentes TS. No se sustituyó producción por código de prueba. |
 
 ## Reproducción y resultados
 
@@ -70,7 +71,7 @@ cd ../../..
 git diff --check
 ```
 
-Resultados ejecutados: API 30 passed; cobertura auth 91%, users 87%, suppliers 96%; Jest 4/4; build TypeScript/browser exitoso; `git diff --check` sin errores. API mostró una advertencia externa de deprecación Starlette/httpx. `npm ci` informó 7 vulnerabilidades de severidad baja en el árbol npm; no se ejecutó `npm audit fix` por ser ajeno al cierre y potencialmente modificar dependencias.
+Resultados ejecutados en el cierre FINAL-02: API 30 passed; cobertura auth 91%, users 87%, suppliers 96%; Jest 11/11 en 2 suites, incluyendo siete tests de auth; cobertura combinada statements 97.11%, branches 91.86%, functions 94.73%, lines 98.82%; `npm run build` compila y genera ambos bundles; smoke de UI muestra formulario login sin errores uncaught; `git diff --check` sin errores. API mostró una advertencia externa de deprecación Starlette/httpx. `npm ci` informó 7 vulnerabilidades de severidad baja en el árbol npm; no se ejecutó `npm audit fix` por ser ajeno al cierre y potencialmente modificar dependencias.
 
 ### Casos límite y bugs reales
 

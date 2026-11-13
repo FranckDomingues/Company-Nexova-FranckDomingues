@@ -7,6 +7,7 @@
   <title>Proveedores · Nexova Backoffice</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="suppliers/dist/supplier-utils.js" defer></script>
+  <script src="suppliers/dist/auth-session.js" defer></script>
   <script src="suppliers/supplier-directory.js" defer></script>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
@@ -14,10 +15,22 @@
   <header class="border-b border-slate-200 bg-white">
     <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
       <a href="index.html" class="text-xl font-bold tracking-tight text-slate-900">Nexova <span class="font-medium text-slate-500">Backoffice</span></a>
+      <div id="account-tools" hidden class="flex items-center gap-3 text-sm"><span id="account-email" class="text-slate-600"></span><button id="logout-button" type="button" class="rounded-md border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">Cerrar sesión</button></div>
       <nav aria-label="Menú principal"><ul class="flex flex-wrap gap-2 text-sm font-medium"><li><a class="rounded-md bg-sky-50 px-3 py-2 text-sky-900" href="#main" aria-current="page">Directorio de proveedores</a></li></ul></nav>
     </div>
   </header>
   <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <section id="login-gate" class="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm" aria-labelledby="login-title">
+      <h1 id="login-title" class="text-2xl font-bold">Iniciar sesión</h1>
+      <p class="mt-2 text-sm text-slate-600">Accede con tu cuenta Nexova para gestionar proveedores.</p>
+      <form id="login-form" class="mt-5 space-y-4">
+        <label class="block text-sm font-medium">Correo electrónico<input name="username" type="email" autocomplete="username" required class="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3" /></label>
+        <label class="block text-sm font-medium">Contraseña<input name="password" type="password" autocomplete="current-password" required class="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3" /></label>
+        <p id="login-error" role="alert" class="text-sm text-rose-700"></p>
+        <button type="submit" class="min-h-11 rounded-md bg-sky-700 px-5 font-semibold text-white hover:bg-sky-800">Entrar</button>
+      </form>
+    </section>
+    <div id="authenticated-app" hidden>
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div><p class="text-sm font-semibold uppercase tracking-wider text-sky-700">Operaciones · Compras</p><h1 class="mt-1 text-3xl font-bold tracking-tight">Directorio de proveedores</h1><p class="mt-2 max-w-2xl text-slate-600">Registro oficial de servicios, tarifas mensuales y estado contractual.</p></div>
       <a href="#new-supplier" class="rounded-md bg-sky-700 px-4 py-2.5 font-semibold text-white hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2">+ Registrar proveedor</a>
@@ -58,6 +71,7 @@
       </form>
     </section>
     <p class="mt-6 text-xs text-slate-500">Las renovaciones dentro de los próximos 60 días se resaltan automáticamente.</p>
+    </div>
   </main>
   <dialog id="rate-dialog" class="w-[min(92vw,26rem)] rounded-xl p-0 shadow-xl backdrop:bg-slate-900/40"><form method="dialog" id="rate-form" class="p-6"><h2 class="text-lg font-semibold">Actualizar tarifa mensual</h2><label class="mt-4 block text-sm font-medium">Nueva tarifa <input name="monthly_rate" type="number" min="0.01" step="0.01" required class="mt-1 block min-h-11 w-full rounded-md border border-slate-300 px-3" /></label><p id="rate-error" role="alert" class="mt-2 text-sm text-rose-700"></p><div class="mt-5 flex justify-end gap-2"><button value="cancel" class="rounded-md border px-4 py-2">Cancelar</button><button id="save-rate" value="default" class="rounded-md bg-sky-700 px-4 py-2 font-semibold text-white">Guardar</button></div></form></dialog>
 </body>

@@ -1,3 +1,4 @@
+(() => {
 const exports = {};
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -45,3 +46,5 @@ exports.NexovaSupplierUtils = { categories: exports.categories, labelFor, escape
 if (typeof window !== 'undefined') {
     window.NexovaSupplierUtils = exports.NexovaSupplierUtils;
 }
+
+})();
