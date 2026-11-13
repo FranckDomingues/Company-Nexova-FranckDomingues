@@ -36,7 +36,7 @@
 
 ## Clean-clone verification
 
-EH-01B clean-clone evidence predates EH-01C and must not be interpreted as validating EH-01C. EH-01C local verification passes (API 25, analyzer 14, CSV cleaner 9, dashboard 5; syntax checks and `git diff --check` pass). A clean clone of the final EH-01C commit is still pending because commit/push has not yet occurred; no clean-clone PASS is claimed for EH-01C.
+**PASS** — cloned the pushed `feature/error-handling-audit` branch into a fresh directory at commit `d0571a202c2ad4ed0f0f4994599ba222c0af956b` and ran the complete reproduction suite without relying on the original working tree. API 25, analyzer 14, CSV cleaner 9, dashboard 5 passed; Python and JavaScript syntax checks and `git diff --check` passed. Commands are listed in `REPRODUCTION.md`.
 
 ## First-run and compatibility notes
 

@@ -1,6 +1,6 @@
-# EH-01B Reproduction (fresh Codespace)
+# EH-01C Reproduction (fresh Codespace)
 
-After the EH-01C commit is pushed, a clean checkout of `feature/error-handling-audit` contains all milestone code/tests; no sibling branch or secret is needed. Commands assume Ubuntu Codespaces with Python 3.12+ and Node 18+.
+Verified from a clean clone of `feature/error-handling-audit` at `d0571a202c2ad4ed0f0f4994599ba222c0af956b`. The branch contains all milestone code/tests; no sibling branch or secret is needed. Commands assume Ubuntu Codespaces with Python 3.12+ and Node 18+.
 
 ## Environment and dependencies
 
