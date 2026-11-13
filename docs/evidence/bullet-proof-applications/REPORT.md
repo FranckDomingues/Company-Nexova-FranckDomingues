@@ -1,40 +1,77 @@
-# Building Bullet-Proof Applications — 28-item evidence report
+# Building Bullet-Proof Applications — evidencia académica
 
-Status uses PASS only for directly inspected implementation or executed automated evidence. Interactive Swagger criterion is BLOCKED because no browser/API-doc interaction was performed during this milestone. Commands are from repository root unless marked otherwise.
+**Fuente normativa:** [README.es.md del proyecto](https://github.com/4GeeksAcademy/ai-engineering-syllabus/blob/main/content/projects/ai-eng-building-bullet-proof-applications/README.es.md).
 
-| # | Checklist criterion | Status | Concrete evidence |
+## Conteo y alcance del checklist
+
+El README contiene **28 casillas Markdown explícitas**: 24 casillas fuera de la lista TypeScript, 1 casilla Jest de cobertura y 3 subcasillas de happy/edge/failure (incluye además 3 extras dentro de su sección). La tabla enumera las 28 casillas evaluables por el milestone principal y la sección extra se evalúa por separado para no contarla dos veces. No deben confundirse con las “28 tareas” mostradas por el portal: no contamos con una exportación del portal para mapearlas individualmente. La tabla siguiente corresponde literalmente a esas 28 casillas fuente; API-042 y FE-019 también se informan como extras solicitados.
+
+**Resultado: 26 PASS y 2 NO APLICA condicionales** (no existen utilidades TypeScript de autenticación). Jest sí configura y prueba utilidades TypeScript reales del dominio proveedores, lo que satisface FE-019; estos NO APLICA no son fallos. No hay un requisito Swagger `/docs` en este README. Las filas 21–28 corresponden a las ocho casillas de evaluación de la fuente y se muestran separadas aunque algunas corroboran evidencia ya citada.
+
+| # | Casilla atómica del README | Estado | Evidencia concreta |
 |---:|---|---|---|
-| 1 | User records persist in TinyDB with expected fields | PASS | `services/api/app/database.py`; `services/api/tests/test_auth.py::test_user_and_profile_data_live_only_in_tinydb_tables` |
-| 2 | Profile records persist in TinyDB with expected fields | PASS | Same test asserts profile table and field set |
-| 3 | Registration creates exactly one linked profile | PASS | `test_register_creates_normalized_user_and_single_profile` |
-| 4 | No SQL ORM persistence introduced | PASS | `services/api/app/database.py` uses TinyDB; no ORM changes in milestone diff |
-| 5 | JWT subject identifies TinyDB user id | PASS | `test_jwt_subject_signature_and_configured_expiration` |
-| 6 | Roles are restricted to supported values | PASS | `services/api/app/routes/users.py` `Roles`; `test_unique_normalized_email_and_role_validation` |
-| 7 | Public registration cannot self-promote or disable account | PASS | Registration posts `role=admin,is_active=False`; returned/stored least-privilege state asserted in `test_register_creates_normalized_user_and_single_profile` |
-| 8 | User create/read/update/delete operations exist | PASS | `services/api/app/routes/users.py`; `test_profile_me_and_user_ownership_and_admin_operations`; `test_user_delete_own_and_linked_profile_and_user_crud` |
-| 9 | Optional profile data is linked at registration | PASS | `test_register_creates_normalized_user_and_single_profile` |
-| 10 | User collection listing is admin-protected | PASS | `test_profile_me_and_user_ownership_and_admin_operations` asserts anonymous 401, user 403, admin success |
-| 11 | User can update own credentials; privilege updates admin-only | PASS | Same test asserts self password update and 403 promotion; admin privilege update |
-| 12 | Delete removes user and linked profile with authorization | PASS | `test_user_delete_own_and_linked_profile_and_user_crud`; admin deletion assertions in admin operations test |
-| 13 | Profile endpoints are caller-scoped | PASS | `test_profile_me_and_user_ownership_and_admin_operations`; routes in `app/routes/users.py` |
-| 14 | Login and current-account routes are implemented | PASS | `services/api/app/routes/authentication.py`; `test_password_login_and_auth_me_exclude_hashes` |
-| 15 | Password hashes are never exposed in public auth responses | PASS | Registration and `/auth/me` assertions in `test_register_creates_normalized_user_and_single_profile` and `test_password_login_and_auth_me_exclude_hashes` |
-| 16 | OAuth2 bearer flow and declared dependencies are used | PASS | `services/api/app/auth.py`, `services/api/pyproject.toml`, `services/api/uv.lock` |
-| 17 | Password is hashed and checked | PASS | Hashed storage and successful/failed login assertions in `test_register_creates_normalized_user_and_single_profile`, `test_password_login_and_auth_me_exclude_hashes`; new `bcrypt_sha256` accepts API's 128-character boundary |
-| 18 | Signing secret and expiry are environment-configurable | PASS | `JWT_SECRET_KEY`/`JWT_ACCESS_TOKEN_EXPIRE_MINUTES` in `app/auth.py`; exact token duration assertion in `test_jwt_subject_signature_and_configured_expiration` |
-| 19 | JWT signature, expiry, subject, user existence and active state are checked | PASS | `test_jwt_subject_signature_and_configured_expiration`, `test_tokens_missing_exp_claim_and_expiration_boundary_are_rejected`, `test_inactive_and_deleted_users_cannot_use_existing_tokens` |
-| 20 | Unauthenticated and unauthorized requests distinguish 401/403 | PASS | Token and ownership/role assertions in `services/api/tests/test_auth.py` |
-| 21 | At least five sensitive existing routes require auth | PASS | Six `/suppliers` methods tested 401 without token in `test_existing_sensitive_supplier_routes_require_manager_or_admin` |
-| 22 | Authorized supplier behavior works | PASS | Same test exercises manager create/list/detail/rate/status/delete; `services/api/tests/test_suppliers.py` regression suite |
-| 23 | Public health route remains public | PASS | `test_public_health_endpoint_remains_available_without_auth` |
-| 24 | Auth is stateless bearer-token based | PASS | `OAuth2PasswordBearer`, JWT dependency in `services/api/app/auth.py`; no session/cookie implementation introduced |
-| 25 | Tests are isolated and do not use production data/secrets | PASS | `tmp_path`, isolated `JWT_SECRET_KEY`, dependency overrides in API test fixtures; no production service integration |
-| 26 | Authentication automated tests and coverage threshold pass | PASS | `cd services/api && uv run pytest --cov=app.auth --cov=app.routes.authentication --cov-report=term-missing`: 30 passed, total 91% (auth 89%, route 97%) |
-| 27 | Existing tests/regressions pass | PASS | `cd services/api && uv run pytest -q`: 30 passed, 0 failed; one external deprecation warning |
-| 28 | Interactive `/docs` browser authorization flow exercised | BLOCKED | Not executed for this milestone; no browser evidence is claimed. Automated API/TestClient auth evidence is in `test_auth.py`; Swagger reproduction instructions are in `TESTING.md`. |
+| 1 | Crear `TESTING.md` con ejecución, cobertura de suites y casos/razones | PASS | `TESTING.md`, matrices y reproducción |
+| 2 | Antes de tests, listar happy/edge/failure por endpoint | PASS | Plan anotado antes de test code en `TESTING.md`; precedencia confirmada en historial Git |
+| 3 | Crear `tests/` en raíz FastAPI | PASS | `services/api/tests/` |
+| 4 | Módulo de pruebas para cada endpoint auth | PASS | `services/api/tests/test_auth.py`, rutas reales inventariadas en `TESTING.md` |
+| 5 | Por endpoint implementar happy, edge y failure como mínimo (casilla padre) | PASS | Desglosado para los tres endpoints en criterios 6–8 |
+| 6 | Happy path por endpoint | PASS | Registro, login y `/auth/me` exitosos en `test_auth.py` |
+| 7 | Edge por endpoint | PASS | Password 0/8/128/129; duplicado email normalizado; JWT sin `exp` y frontera de expiración |
+| 8 | Failure por endpoint | PASS | Credenciales inválidas, duplicado, token malformado/tampered/expirado, usuario inactivo/eliminado |
+| 9 | `uv run pytest` pasa desde raíz FastAPI | PASS | `services/api`: 30 passed, 0 failed |
+| 10 | Cobertura auth ≥70% | PASS | 91% combinado: `app/auth.py` 89%, `app/routes/authentication.py` 97% |
+| 11 | Condicional: configurar Jest en raíz del proyecto TS | PASS | `uis/backoffice/suppliers/jest.config.cjs`, `package.json`, `tsconfig.json` |
+| 12 | Tests de funciones utilitarias TS relacionadas con auth | NO APLICA | No hay utilidades TypeScript de auth; las utilidades TS existentes son de proveedores. No se inventaron funciones. |
+| 13 | Por cada función TS de auth, happy y failure | NO APLICA | No existen funciones TS de auth a las que aplicar el requisito; las utilidades reales de proveedor se prueban para FE-019. |
+| 14 | Jest pasa con `--coverage` | PASS | `npm test` ejecuta `jest --coverage --runInBand`: 1 suite, 4 tests |
+| 15 | Usar IA para identificar casos límite omitidos | PASS | `TESTING.md`, sección «Bugs y hallazgos de casos límite» |
+| 16 | IA para boilerplate y revisión/entendimiento de cada test | PASS | Tests contrastados con comportamiento real; decisiones y matrices en `TESTING.md` |
+| 17 | Corregir y documentar bug revelado por tests | PASS | Bugs bcrypt límite 72 bytes y JWT sin `exp`, con regresiones documentadas en `TESTING.md` y pruebas |
+| 18 | Extra API: ≥2 grupos, coverage ≥60% | PASS | Users 87%, suppliers 96%; comandos independientes en `TESTING.md` |
+| 19 | Extra FE: ≥3 utilidades, happy + failure por función | PASS | Cuatro funciones reales y tests en `supplier-utils.ts` / `supplier-utils.test.ts` |
+| 20 | Extra: `TESTING.md` con resultados e instrucciones de suites adicionales | PASS | Matrices API-042/FE-019 y reproducción independiente en `TESTING.md` |
+| 21 | Evaluación: `TESTING.md` plan, ejecución, cobertura | PASS | `TESTING.md` y resultados de cierre medidos |
+| 22 | Evaluación: pytest pasa sin errores | PASS | `uv run pytest -q`: 30 passed |
+| 23 | Evaluación: happy/edge/failure para cada endpoint auth | PASS | Evidencia en criterios 5–8 y matriz de `TESTING.md` |
+| 24 | Evaluación: auth coverage ≥70% | PASS | 91% combinado |
+| 25 | Evaluación: aserciones de lógica, no serialización/framework | PASS | Reglas, permisos, hashing, claims y estado persistido; no internals de FastAPI |
+| 26 | Evaluación: si hay utilidades TypeScript, Jest existe y pasa | PASS | TS real de proveedores está cubierto; `npm test` pasa con coverage |
+| 27 | Evaluación: flujo IA evidente en `TESTING.md` | PASS | Casos límite y bugs descubiertos descritos en `TESTING.md` |
+| 28 | Evaluación: nombres/estructura claros y comentarios breves | PASS | Tests con nombres descriptivos y estructura consistente |
 
-## Additional required milestone evidence
+> Nota de conteo: los puntos 12–13 son condicionales y dirigidos a utilidades TypeScript de autenticación. No existen en este repositorio, por lo que se marcan NO APLICA, no FAIL. Las utilidades reales TypeScript del backoffice sí se testean para FE-019 y satisfacen el criterio general de evaluación condicional.
 
-- API-042 `app/routes/users.py`: 87% coverage; API-042 `app/routes/suppliers.py`: 96% coverage. Each measured by its own sequential `pytest --cov` command documented in `TESTING.md`.
-- FE-019: `uis/backoffice/suppliers/src/supplier-utils.ts` has four actual supplier UI utilities; Jest reports 1 suite/4 tests passed, 96.42% statements, 91.3% branches, 100% functions, 95.45% lines. `npm run build` compiles the actual page-consumed browser bundle.
-- Reproduction: see `TESTING.md`. No coverage directories, `node_modules`, or Python build metadata should be committed.
+## Evidencia de tickets adicionales y verificación runtime
+
+| Área | Resultado ejecutado |
+|---|---|
+| API-042 usuarios/perfiles (`app/routes/users.py`) | **87%**, por encima de 60%; `uv run pytest --cov=app.routes.users --cov-report=term-missing` |
+| API-042 proveedores (`app/routes/suppliers.py`) | **96%**, por encima de 60%; `uv run pytest --cov=app.routes.suppliers --cov-report=term-missing` |
+| FE-019 | Cuatro utilidades reales: `labelFor`, `escapeHtml`, `currencyLabel`, `isRenewalSoon`; Jest 1 suite / 4 tests; statements 96.42%, branches 91.3%, functions 100%, lines 95.45% |
+| Browser smoke | Inicialmente fallaba: bundle UMD no publicaba `window.NexovaSupplierUtils`, generando error uncaught al desestructurar en `supplier-directory.js`. Corregido el build: sin errores de página; el global expone las cinco propiedades consumidas; directorio renderiza 15 filas, etiquetas de categoría y montos EUR/USD. El fixture no contiene renovación futura; resaltado de ventana se verifica con fechas deterministas en Jest. |
+| Orden y bundle | `index.html` carga `suppliers/dist/supplier-utils.js` antes de `supplier-directory.js` (`defer` en ambos); `npm run build` crea el bundle clásico desde el TypeScript existente. No se sustituyó producción por código de prueba. |
+
+## Reproducción y resultados
+
+Ejecutar desde directorios indicados y en secuencia para no compartir `.coverage` concurrentemente:
+
+```sh
+cd services/api
+uv sync --extra dev
+uv run pytest -q
+uv run pytest --cov=app.auth --cov=app.routes.authentication --cov-report=term-missing
+uv run pytest --cov=app.routes.users --cov-report=term-missing
+uv run pytest --cov=app.routes.suppliers --cov-report=term-missing
+cd ../../uis/backoffice/suppliers
+npm ci
+npm test
+npm run build
+cd ../../..
+git diff --check
+```
+
+Resultados ejecutados: API 30 passed; cobertura auth 91%, users 87%, suppliers 96%; Jest 4/4; build TypeScript/browser exitoso; `git diff --check` sin errores. API mostró una advertencia externa de deprecación Starlette/httpx. `npm ci` informó 7 vulnerabilidades de severidad baja en el árbol npm; no se ejecutó `npm audit fix` por ser ajeno al cierre y potencialmente modificar dependencias.
+
+### Casos límite y bugs reales
+
+La revisión con asistencia IA destacó límite de bcrypt, `exp` ausente, expiración exacta, rollback de perfil, escape HTML, monedas inválidas, fechas imposibles y horizonte inclusivo de 60 días. Se corrigieron dos bugs de API: hashes nuevos usan `bcrypt_sha256` preservando verificación de hashes bcrypt anteriores; tokens sin `exp` se rechazan. La verificación real en navegador descubrió y corrigió también el bundle que no exponía globalmente la utilidad TypeScript.
