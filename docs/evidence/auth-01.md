@@ -34,8 +34,8 @@
 | 24 | Stateless/no session-cookie auth | PASS | OAuth2 bearer JWT only; no session/cookie middleware or persistence introduced. |
 | 25 | Isolated test data / no secrets committed | PASS | `tmp_path` TinyDB test DB, test-only secret injected per fixture; no `.env` file or real data changes. |
 | 26 | Automated coverage for required auth scenarios | PASS | `tests/test_auth.py` covers registration, policy, credentials, token edges, profile, CRUD, protected routes and consistency. |
-| 27 | Existing tests and compatibility | PASS | `uv run pytest -q`: 24 passed (see report). |
-| 28 | Interactive `/docs` browser test | FAIL | Not executed interactively in browser. Reproduce: set env vars, run `uv run uvicorn app.main:app --reload`, visit `http://127.0.0.1:8000/docs`; exercise Authorize, `/auth/login`, and protected endpoint. |
+| 27 | Existing tests and compatibility | PASS | Final `cd services/api && uv run pytest -q`: 26 passed, 0 failed (one third-party Starlette/httpx deprecation warning). |
+| 28 | Interactive `/docs` browser test | FAIL | Real browser opened `/docs` against the local QA server and rendered the API operations. Earlier browser work verified registration (201), login (200), `/auth/me` (200), `/profiles/me` (200), unauthenticated `/suppliers` (401), and Swagger OAuth2 Authorize/bearer header. The browser session/server interruption prevented completing an authorized supplier request and invalid/expired token requests interactively. Those supplier cases are instead verified by the isolated TestClient test `test_supplier_list_rejects_invalid_tokens_and_accepts_manager_token`; do not count them as browser verification. Reproduction: start the API with isolated `SUPPLIER_DB_PATH` and test-only `JWT_SECRET_KEY`, open `/docs`, authorize a manager/admin test account, and run `GET /suppliers` with valid, malformed, and expired tokens. |
 
 ## Protected existing routes
 
@@ -52,7 +52,7 @@ Each is tested without credentials as 401. Manager-authorized successful behavio
 
 ## Test execution
 
-`cd services/api && uv run pytest -q` — **25 passed, 0 failed**, one third-party Starlette/httpx deprecation warning. Browser interaction is not verified (checklist item 28 remains FAIL).
+`cd services/api && uv run pytest -q` — **26 passed, 0 failed**, one third-party Starlette/httpx deprecation warning. The focused supplier test verifies unauthenticated, valid manager, malformed-token, and expired-token outcomes using the existing temporary TinyDB fixture. Browser `/docs` rendered successfully and OAuth2 Authorize compatibility was confirmed, but the final interactive supplier checks were interrupted; checklist item 28 remains FAIL.
 
 ## Interactive docs reproduction
 
@@ -64,4 +64,4 @@ uv run uvicorn app.main:app --reload
 # Open http://127.0.0.1:8000/docs
 ```
 
-Register a user, use `/auth/login` with `username` and `password` form fields, click Authorize and provide its token, then call `/auth/me` and `/profiles/me`. To exercise supplier management, a manager/admin user must be provisioned through an authorized administrative process (public registration cannot assign the role).
+Register a user, use `/auth/login` with `username` and `password` form fields, click Authorize and provide its token, then call `/auth/me` and `/profiles/me`. To exercise supplier management, use a manager/admin fixture or an authorized administrative process (public registration cannot assign the role). Browser evidence recorded: `/docs` loaded and displayed operations; OAuth2 password-flow Authorize succeeded and attached a bearer token; `/auth/me` and `/profiles/me` returned 200; unauthenticated `GET /suppliers` returned 401. The final interactive authorized supplier and malformed/expired token checks were not completed due to browser/server instability. Automated TestClient evidence: `test_supplier_list_rejects_invalid_tokens_and_accepts_manager_token` expects 401 without credentials, 401 for `Bearer malformed.token.value`, 401 for an expired signed token, and 200 with an authenticated manager token.

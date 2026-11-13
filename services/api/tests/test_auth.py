@@ -166,6 +166,22 @@ def test_existing_sensitive_supplier_routes_require_manager_or_admin(client):
     assert client.delete(f"/suppliers/{supplier_id}", headers=headers(manager_token)).status_code == 204
 
 
+def test_supplier_list_rejects_invalid_tokens_and_accepts_manager_token(client):
+    signup(client)
+
+    assert client.get("/suppliers").status_code == 401
+    assert client.get("/suppliers", headers=headers("malformed.token.value")).status_code == 401
+    expired_token = create_access_token(1, timedelta(seconds=-1))
+    assert client.get("/suppliers", headers=headers(expired_token)).status_code == 401
+
+    users = client.app.dependency_overrides[get_users_table]()
+    users.update({"role": "manager"}, doc_ids=[1])
+    manager_token = token(client)
+    response = client.get("/suppliers", headers=headers(manager_token))
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_user_and_profile_data_live_only_in_tinydb_tables(client):
     signup(client)
     users = client.app.dependency_overrides[get_users_table]()
