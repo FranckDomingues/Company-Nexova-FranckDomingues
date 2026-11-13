@@ -1,51 +1,53 @@
 # EH-01 Completion Checklist
 
-Statuses: **PASS**, **FAIL**, **BLOCKED**, **NOT_APPLICABLE**. N/A means the relevant path is demonstrably absent on the selected base; it is not a tested pass.
+Statuses: **PASS**, **FAIL**, **BLOCKED**, **NOT_APPLICABLE**. N/A means the relevant path is demonstrably absent from the coherent integrated scope; it is not a tested pass.
+
+**Scope:** The branch starts at `origin/main` and selectively integrates the real incident-analysis API and dashboard from `origin/feature/incidents-analysis` commit `44c0772...`; see `UPSTREAM_PROVENANCE.md`. This does not integrate the separate auth, supplier-directory, or centralized incident-manager products.
 
 ## Frontend
 
 | ID | Status | Evidence |
 |---|---|---|
-| EH-F01 | NOT_APPLICABLE | `origin/main` has no fetch/API calls (verified by source search); no network operation to harden. No fetch mock/retry test is appropriate to this no-network form. |
-| EH-F02 | NOT_APPLICABLE | No async data-loading operation or data loader exists. Form validation is synchronous; no loading/success/error/retry async regression path exists to implement. |
-| EH-F03 | PASS | `uis/website/validation.js` uses fixed, readable Spanish field/status messages; the form does not expose exception, HTTP, or JSON parser text. |
-| EH-F04 | PASS | Field errors instruct corrections and the submit-level message tells the user to review marked fields; first invalid control is focused (`validation.js`, submit/validation flow). |
-| EH-F05 | NOT_APPLICABLE | No nested optional response/domain data is rendered; page elements are required and checked before binding. |
-| EH-F06 | NOT_APPLICABLE | No optional API/domain response data or dynamic data rendering exists in this frontend. Existing required input domain validation remains explicit. |
-| EH-F07 | NOT_APPLICABLE | No async loader, loading flag, or request race exists; form submit is synchronous. Reset's animation-frame cleanup is not data loading; no loading-success-failure-retry flow can be meaningfully tested. |
+| EH-F01 | PASS | Actual `uis/backoffice/dashboard.js` POST and export GET handle network rejection, non-2xx status, malformed JSON and response shape with narrowly scoped handling. `node uis/backoffice/tests/dashboard.test.js` verifies 503, network, and invalid JSON cases. |
+| EH-F02 | PASS | Dashboard exposes processing/status, completed results, and actionable error states for its async analysis and export operations; async UI tests exercise pending, success, and failure. |
+| EH-F03 | PASS | Both public form and dashboard use safe fixed Spanish messages. Unexpected exception details are not interpolated into UI; dashboard tests include canary exception and parser failures. |
+| EH-F04 | PASS | Public form identifies corrections; dashboard advises retry/service availability/support and allows retry after failure. Tests exercise failure then retry. |
+| EH-F05 | PASS | Dashboard uses guarded file access, validates nested `metrics`, and uses null-safe defaults; regression covers `average_satisfaction: null` and zero-valid-record rendering. |
+| EH-F06 | PASS | Nullish metric fallbacks render explicit `0`/`N/D`; malformed top-level metrics are rejected rather than silently normalized. Verified by dashboard regressions. |
+| EH-F07 | PASS | Analysis/export flags are restored in `finally`; upload has duplicate-submit guard and drops a response if the selected file changed in-flight. Regression verifies stale result is discarded along with button cleanup on HTTP/network/JSON errors. |
 
 ## Backend
 
 | ID | Status | Evidence |
 |---|---|---|
-| EH-B01 | BLOCKED | No FastAPI/backend route source exists on `origin/main` (`git ls-tree -r origin/main`); exact route dependencies are listed in `DEPENDENCIES.md`; route review cannot run on this base. |
-| EH-B02 | BLOCKED | No HTTP route/response exists on the selected base; 400/404/422/500 and preserved auth status regressions cannot be added without the upstream backend. |
-| EH-B03 | BLOCKED | No server client error response exists on the selected base; response leakage/canary tests require backend dependencies listed in `DEPENDENCIES.md`. Python utility diagnostics are separately covered by EH-S01/EH-G01. |
-| EH-B04 | BLOCKED | No external API integration exists on the selected base; upstream integrations were not imported or tested. |
+| EH-B01 | PASS | `services/api/app/api/routes/incidents.py` scopes CSV parse and upload I/O handling around the upload/analyzer boundary; tests cover CSV 400 and I/O 500. Global handlers cover framework/otherwise-unhandled boundaries. |
+| EH-B02 | PASS | Routes and handlers return structured JSON errors: 400 invalid CSV, 404 missing result, 413 upload limit, 422 request validation, 500 unexpected/I/O. No authentication route exists in this integrated app; 401/403 preservation is not applicable to these routes. `services/api/tests/test_incidents_api.py` passes. |
+| EH-B03 | PASS | Generic and validation handlers omit details; HTTP handler maps safe messages while preserving status/headers. Canary tests assert no secret, traceback, or path in responses; logs contain exception type only. |
+| EH-B04 | NOT_APPLICABLE | Source inventory of integrated `services/api/app` has no outbound HTTP client/external API integration; no artificial integration/retry was added. |
 
 ## Python scripts
 
 | ID | Status | Evidence |
 |---|---|---|
-| EH-S01 | PASS | `skills/data-analysis/scripts/pandas_clean.py` catches expected file/encoding/CSV/output errors and emits sanitized stderr; regression tests cover missing/malformed/I/O failures. |
-| EH-S02 | PASS | `main()` returns explicit nonzero error codes and zero on success; regression tests assert subprocess exit statuses. |
-| EH-S03 | PASS | CLI input existence/type and CSV shape are checked before processing; optional output is written through a temporary file and atomically replaced; tests cover invalid input and failed output. |
+| EH-S01 | PASS | Both `skills/data-analysis/scripts/pandas_clean.py` and integrated `scripts/analyze.py` use sanitized failure diagnostics. Original script tests cover missing/malformed/read/write errors; Integrated analyzer subprocess tests cover missing input, malformed headers, export I/O failure, EOF, sanitized stderr and exit codes; atomic export behavior is also exercised. |
+| EH-S02 | PASS | Original CLI subprocess tests assert zero/nonzero statuses; integrated analyzer subprocess tests verify zero on success and nonzero with sanitized stderr on missing file, malformed CSV, export I/O error, and EOF. |
+| EH-S03 | PASS | Both scripts validate input structure before successful processing; original CLI tests cover missing/empty/malformed inputs and atomic write failure. `scripts/analyze.py` export uses temporary output + replace. |
 
 ## General security
 
 | ID | Status | Evidence |
 |---|---|---|
-| EH-G01 | PASS | JS console diagnostics contain only fixed DOM IDs; Python no longer prints row samples, cell values, or raw exception/path details. Canary regression test verifies sensitive cell values are not printed. |
+| EH-G01 | PASS | Python CLI diagnostics and API logs omit raw error strings/paths/row data; API canary tests verify response sanitation. Dashboard displays only known-safe error messages. Existing website console messages contain only static element IDs. |
 
 ## Final evaluation
 
 | ID | Status | Evidence |
 |---|---|---|
-| EH-V01 | NOT_APPLICABLE | No async frontend data operations exist on main (same source inventory as EH-F02); feature-branch dashboard async cases are outside this base and untested. |
-| EH-V02 | PASS | Spanish, actionable validation errors and correction guidance in `validation.js`; manual integrated-browser checks verified invalid-submit recovery/focus and valid-submit confirmation. No frontend automation harness exists on this base. |
-| EH-V03 | PASS | Script catches only expected input/dependency/output error types at CLI boundaries; no blanket application-handler catch. JS has no exception handlers because no async/network action exists. |
-| EH-V04 | NOT_APPLICABLE | No frontend loading flags or async requests exist; cleanup in a loading-success-failure-retry test is inapplicable on this base. |
-| EH-V05 | NOT_APPLICABLE | No optional nested frontend data is rendered; static form values are validated against explicit allowed domains. |
-| EH-V06 | BLOCKED | No backend routes exist on `origin/main`; route error response tests depend on the backend files described in `DEPENDENCIES.md`. |
-| EH-V07 | BLOCKED | No backend client error response exists to test for secrets/tracebacks; required backend is absent on this base. |
-| EH-V08 | PASS | Script failure/success subprocess tests assert safe diagnostics and exit codes for missing, malformed, and output-I/O failures. |
+| EH-V01 | PASS | Dashboard tests verify pending, successful, HTTP failure, network failure, malformed JSON, retry, and cleanup; no other async frontend data operations found in included UI. |
+| EH-V02 | PASS | Included form and dashboard use Spanish recovery-oriented messages; unexpected exception and parser details are hidden (dashboard canary tests). |
+| EH-V03 | PASS | API routes scope expected parsing/I/O catches; global API exception handling is limited to validation, HTTP, and final unexpected-error boundaries; frontend catches only request/parse/render workflow errors. |
+| EH-V04 | PASS | `finally` resets analysis/export button state; frontend tests assert reset after failures. |
+| EH-V05 | PASS | Dashboard metric nullish defaults and malformed response validation are covered by rendering regressions. |
+| EH-V06 | PASS | API suite covers 400/404/413/422/500. Auth 401/403 routes do not exist in integrated scope. |
+| EH-V07 | PASS | Runtime and validation canaries confirm no secret/path/traceback in JSON error responses; generic logs include exception class only. |
+| EH-V08 | PASS | Original script suite covers success and missing/malformed/read/write failures with exit codes. Integrated analyzer Python tests and API upload I/O regression also pass. |

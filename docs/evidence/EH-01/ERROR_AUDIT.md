@@ -1,28 +1,30 @@
 # EH-01 Error Handling Audit
 
-**Base:** `origin/main` (`047da24ec0ac3e2ebe6972d89f26abed37acd0d5`), inspected in isolation on `feature/error-handling-audit`.
+**Base:** `origin/main` (`047da24ec0ac3e2ebe6972d89f26abed37acd0d5`), with the incident-analysis application selectively integrated from `origin/feature/incidents-analysis` (`44c0772...`). Existing EH-01 script hardening at `e1289b7` is retained. Source selection/provenance is documented in `UPSTREAM_PROVENANCE.md`.
 
 ## Scope and inventory
 
-The chosen base is a static public site plus two Python source files. It contains no Next.js application, API client, asynchronous data loader, FastAPI application, external API integration, or server-side route. The existing application form is a client-side validation demonstration; submit does not send or persist data. `agents/_template/agent.py` is empty. The only runnable Python utility is `skills/data-analysis/scripts/pandas_clean.py`.
+The selected `main` base is a static public site plus Python utility; it has no Next.js application. The milestone branch additionally contains the coherent real incident-analysis API/dashboard and CSV analyzer selectively integrated from `feature/incidents-analysis`. The original application form still validates locally and does not send data; `agents/_template/agent.py` is empty. The included backoffice dashboard makes actual async analysis and export requests. API details and source paths are in `UPSTREAM_PROVENANCE.md`.
 
 | Severity | Location | Finding | Action |
 |---|---|---|---|
-| Medium | `skills/data-analysis/scripts/pandas_clean.py:5-30` | Reads a fixed CSV with no CLI/input validation or friendly I/O/CSV diagnostics; exceptions emit tracebacks. | Add CLI validation, bounded exception handling, sanitized stderr, explicit exit codes and atomic optional output. |
-| Medium | `skills/data-analysis/scripts/pandas_clean.py:9-30` | Prints dtypes, column names, and sample rows; sample values may include personal or confidential data. | Keep success output to non-sensitive aggregate counts; never print records. |
-| Low | `uis/website/validation.js:4,40-43` | Logs structural page-integration diagnostics to the browser console. Messages contain only fixed element IDs, not user input or secrets. | Retain safe diagnostics; do not log field values. |
-| Low | `uis/website/validation.js:546-562` | Submit validates locally only; there is intentionally no request, loading state, network failure or retry flow. | Preserve the explicitly simulated behavior and ensure validation errors explain how to recover. No fictitious async workflow introduced. |
+| Medium (fixed) | `skills/data-analysis/scripts/pandas_clean.py` | Initially read a fixed CSV with raw exceptions and printed sample data. | CLI validation, bounded sanitized errors, exit codes, aggregate-only output, atomic output and regression coverage added in original EH-01. |
+| High (fixed) | `services/api/app/main.py` | Framework validation and unexpected failures could expose raw details/default traceback behavior; status JSON shape was inconsistent. | Added structured sanitized 422/HTTP/500 handlers; retain safe server-side diagnostic type only; canary-tested. |
+| High (fixed) | `services/api/app/api/routes/incidents.py` | Upload file I/O errors could escape as unhandled failures; parse failures could retain chained context; export missing IDs need 404. | Scoped upload error handling (400/413/500), safe logging, no chained parse details, existing export 404; regression tests. |
+| Medium (fixed) | `uis/backoffice/dashboard.js` | Successful response JSON parse could reveal raw parser details; arbitrary thrown messages could be surfaced. | Added narrow JSON parse/shape checks and fixed Spanish fallback for unexpected errors; loading cleanup in `finally`; automated request regressions. |
+| Low | `uis/website/validation.js:4,40-43` | Logs structural page-integration diagnostics only; messages contain fixed element IDs. | Retained; no user values or secrets logged. |
+| N/A | `services/api/app` | No outbound external API/client integration or auth router exists in the selected incident-analysis closure. | No fake integration added; external-service handling and auth-specific 401/403 coverage are not claimed. |
 
 ## Enumerated paths
 
-- **Fetch/API:** no `fetch`, XHR, Axios, API SDK, or route in `origin/main`.
-- **Async data operations:** none. Form submit and validation are synchronous; reset schedules only a UI cleanup with `requestAnimationFrame`.
-- **Error boundary:** none; no React/Next.js application exists in this base.
-- **Backend routes/services:** none in the selected base. API code found in `feature/auth-api`, incident endpoints in `feature/incidents-analysis`, and a supplier UI/API in feature branches are unmerged and are not part of this implementation or its tests.
-- **External API, exception handlers, logging:** no application external integrations or Python exception handlers. The JS console messages are static structure diagnostics; the Python script prints datasets to stdout and is changed to aggregate-only output.
-- **File/CSV operations:** one `pandas.read_csv("data.csv")` call in the analysis script; no prior output file operation.
-- **CLI entry points/tests:** the pandas script executes at import/top level, has no arguments or tests. No frontend package/test toolchain, root test command, or repository project manifest exists. Python tests are added using the standard `unittest` runner.
+- **Fetch/API:** `uis/backoffice/dashboard.js` contains POST analysis and GET aggregate export `fetch` operations. The async tests mock real request outcomes without adding artificial endpoints or dependencies.
+- **Async data operations:** dashboard upload analysis and export; public form validation remains synchronous. Analysis deduplicates overlapping submissions and clears state in `finally`.
+- **Error boundary:** no React/Next.js app or React error boundary exists; the actual included static dashboard handles request boundaries.
+- **Backend routes/services:** `services/api/app/main.py` includes health and incident router; route modules implement analysis upload and in-memory aggregate export. Tests use FastAPI `TestClient`.
+- **External API, exception handlers, logging:** no external API. API handlers cover validation, HTTP and unexpected exceptions; logs record exception class, not raw message/path/content. JS no console error output from the async flow.
+- **File/CSV operations:** original pandas cleaner and integrated `scripts/analyze.py`; API writes uploads to temporary directories; analyzer export uses atomic replacement.
+- **CLI entry points/tests:** original CLI has standard-library unittest coverage; analyzer has its own tests; API uses FastAPI test client; dashboard harness uses Node built-ins. No Next.js build/lint/type check applies.
 
 ## Checklist status
 
-See [CHECKLIST.md](CHECKLIST.md) for each of the 23 required IDs and evidence. Backend/API and frontend async checks that require absent code paths are explicitly `NOT_APPLICABLE`, not inferred passes.
+See [CHECKLIST.md](CHECKLIST.md) for each of the 23 required IDs and evidence. Checklist dispositions now apply to the integrated feature scope, not to `main` alone. Auth-specific 401/403 and outbound external-service errors are not applicable because those paths do not exist in the integrated incident analysis application.

@@ -1,24 +1,18 @@
-# EH-01 Base and Upstream Dependencies
+# EH-01B Base and Upstream Dependencies
 
-## Selected base
+## Selected base and integration
 
-The milestone branch is intentionally isolated from and based on `origin/main` commit `047da24ec0ac3e2ebe6972d89f26abed37acd0d5` (the user selected `origin/main` after being informed of the source gap). `feature/error-handling-audit` is cleanly created from that base; no earlier feature branch was merged or cherry-picked.
+`feature/error-handling-audit` retains base `origin/main` `047da24ec0ac3e2ebe6972d89f26abed37acd0d5` and prior EH implementation commit `e1289b7526d44357e12f9ba0321f8a50d8a5b4ec`. It now includes a minimal, coherent set of real incident-analysis modules adapted from `origin/feature/incidents-analysis` (`44c0772...`), with complete provenance in `UPSTREAM_PROVENANCE.md`. No other branch is required at test/runtime; no merge or force push is used.
 
 ## Independent testability
 
-The EH-01 work present in `origin/main` is independently testable. Its one data-processing CLI is covered by a standalone `unittest` suite, and the static web form can be run without any service. The main repository has no root package manifest, frontend test/lint/build command, backend app/test config, or CI test command. The repository's Python snippet needs pandas, which must be installed separately as shown in `REPRODUCTION.md`.
+A clean clone of this branch is independently testable. `services/api/pyproject.toml` declares FastAPI, multipart, Uvicorn, and dev test-client dependencies with Python >=3.12. No credentials or external services are required. API tests use local fixtures and mocks; dashboard tests use Node's built-in VM/assert libraries; original Python CSV tests use an isolated environment and pandas. Commands are in `REPRODUCTION.md`.
 
-The full milestone is **not independently testable as a cross-stack backend/async-frontend milestone** on this base. This is a source-content limitation, not an implementation or test failure.
+No separate Next.js framework/package exists, so Next.js build/type/lint checks are not applicable; the static dashboard is syntax checked and has focused automated tests. No database is needed: selected result storage is in-memory for this analysis app.
 
-## Exact upstream dependencies absent from main
+## Not included / remaining limitations
 
-These are observed on branches but deliberately not imported into this milestone:
-
-- `origin/feature/backend-foundation` (also ancestor of `origin/feature/auth-api`) adds `services/api/app/main.py`, FastAPI setup, and `services/api/pyproject.toml`.
-- `origin/feature/auth-api` adds `services/api/app/{auth.py,database.py,models.py,seed.py}`, `services/api/app/routes/{authentication.py,suppliers.py,users.py}`, API tests, and `uis/backoffice/suppliers/supplier-directory.js` plus its UI. Those routes and frontend calls do not exist in `origin/main` and have not been modified or tested by EH-01.
-- `origin/feature/incidents-analysis` adds `services/api/app/api/routes/{incidents.py,incident_results.py}`, `scripts/analyze.py`, its tests, and `uis/backoffice/dashboard.js` with async incident-analysis/export fetches. None of these files exist in `origin/main`; they have not been modified or tested by EH-01.
-- `origin/feature/centralized-incident-manager` contains a separate UI/API evolution, also absent from main. It was not merged or tested as part of this branch.
-
-## Blocked checklist scope
-
-EH-B01..EH-B04 and EH-V06..EH-V07 are marked **BLOCKED** in `CHECKLIST.md` because the named milestone requires route auditing/status/security/external-integration tests, while no backend/routes are available in the selected base. EH-V01/V04 and portions of EH-F01/F02/F05/F06/F07 are **NOT_APPLICABLE** only for the static frontend actually on main (no fetch or async data). They do not assert that asynchronous feature-branch UIs were verified. See the checklist for item-level reasons.
+- The auth/supplier app (`origin/feature/auth-api`, `origin/feature/backend-foundation`) was not integrated; selected incident routes have no auth, so no 401/403 route behavior can be tested or claimed.
+- The supplier-directory async UI and centralized incident manager are different product modules and remain outside this minimal integration. They are not prerequisites for the included dashboard/API scenario and were not tested.
+- No outbound external API integration exists in the included app; EH-B04 is N/A rather than a fabricated implementation.
+- This repository does not contain a Next.js application; no Next.js-specific framework coverage is claimed.
