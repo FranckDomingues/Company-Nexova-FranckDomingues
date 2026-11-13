@@ -32,3 +32,7 @@ Use `Authorization: Bearer <access_token>`. Passwords are bcrypt-hashed. JWTs ar
 - `DELETE /suppliers/{id}` — delete.
 
 Interactive OpenAPI documentation is available at `/docs` while the API is running.
+
+## AUTH-01 verification
+
+For a clean-clone instructor walkthrough, isolated TinyDB/password-hash bootstrap, complete automated suite, and Swagger steps, see [the AUTH-01 testing guide](../../docs/AUTH-01-TESTING.md). The evidence checklist is in [docs/evidence/auth-01.md](../../docs/evidence/auth-01.md).

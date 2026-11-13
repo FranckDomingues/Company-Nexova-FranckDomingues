@@ -35,7 +35,7 @@
 | 25 | Isolated test data / no secrets committed | PASS | `tmp_path` TinyDB test DB, test-only secret injected per fixture; no `.env` file or real data changes. |
 | 26 | Automated coverage for required auth scenarios | PASS | `tests/test_auth.py` covers registration, policy, credentials, token edges, profile, CRUD, protected routes and consistency. |
 | 27 | Existing tests and compatibility | PASS | Final `cd services/api && uv run pytest -q`: 26 passed, 0 failed (one third-party Starlette/httpx deprecation warning). |
-| 28 | Interactive `/docs` browser test | FAIL | Real browser opened `/docs` against the local QA server and rendered the API operations. Earlier browser work verified registration (201), login (200), `/auth/me` (200), `/profiles/me` (200), unauthenticated `/suppliers` (401), and Swagger OAuth2 Authorize/bearer header. The browser session/server interruption prevented completing an authorized supplier request and invalid/expired token requests interactively. Those supplier cases are instead verified by the isolated TestClient test `test_supplier_list_rejects_invalid_tokens_and_accepts_manager_token`; do not count them as browser verification. Reproduction: start the API with isolated `SUPPLIER_DB_PATH` and test-only `JWT_SECRET_KEY`, open `/docs`, authorize a manager/admin test account, and run `GET /suppliers` with valid, malformed, and expired tokens. |
+| 28 | Interactive `/docs` browser test | PASS | Milestone owner verified Swagger OAuth2 Authorize; `GET /suppliers` without Authorization returned 401; with a manager JWT returned 200 and body `[]`. Browser checks for malformed/expired credentials are supplemented by `test_supplier_list_rejects_invalid_tokens_and_accepts_manager_token` (both 401). Reproduction steps and isolated manager-account bootstrap: [`docs/AUTH-01-TESTING.md`](../AUTH-01-TESTING.md). |
 
 ## Protected existing routes
 
@@ -52,7 +52,7 @@ Each is tested without credentials as 401. Manager-authorized successful behavio
 
 ## Test execution
 
-`cd services/api && uv run pytest -q` — **26 passed, 0 failed**, one third-party Starlette/httpx deprecation warning. The focused supplier test verifies unauthenticated, valid manager, malformed-token, and expired-token outcomes using the existing temporary TinyDB fixture. Browser `/docs` rendered successfully and OAuth2 Authorize compatibility was confirmed, but the final interactive supplier checks were interrupted; checklist item 28 remains FAIL.
+`cd services/api && uv run pytest -q` — **26 passed, 0 failed**, one third-party Starlette/httpx deprecation warning. The focused supplier test verifies unauthenticated, valid manager, malformed-token, and expired-token outcomes using the existing temporary TinyDB fixture. The milestone owner additionally verified Swagger OAuth2 Authorize, `GET /suppliers` without Authorization → **401**, and `GET /suppliers` with a manager JWT → **200**, body `[]`; checklist item 28 is PASS. See [`docs/AUTH-01-TESTING.md`](../AUTH-01-TESTING.md) for clean-clone reproduction instructions.
 
 ## Interactive docs reproduction
 
