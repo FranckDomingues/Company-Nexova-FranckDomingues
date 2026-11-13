@@ -21,7 +21,12 @@ Required previous PR merges: **0**. No pending branch is a build or runtime depe
 | Backoffice navigation | Missing | Main only has public website | Added lightweight backoffice shell and incident manager entry point locally. |
 | Auth and supplier directory | Not required by this milestone | Open PRs #4/#5 | Not copied; no dependency. |
 
-No previous feature branch is merged or checked out as a dependency. There are zero unmerged-PR dependencies. The CSV and transformation provenance is preserved in `SOURCE_ANALYZER_BRIEFING.md` and `SOURCE_ANALYZER_SPEC.md`; implementation is designed to run from main without pending PRs. A clean-clone verification has not yet been completed.
+No previous feature branch is merged or checked out as a dependency. There are zero unmerged-PR dependencies. The CSV and transformation provenance is preserved in `SOURCE_ANALYZER_BRIEFING.md` and `SOURCE_ANALYZER_SPEC.md`; implementation is designed to run from main without pending PRs. Essential persistence, API, shared validation, seed, backoffice navigation, and incident UI components are implemented locally; no code from the pending auth or supplier branches is needed.
+
+## Acceptance verification (2026-11-13)
+A fresh clone of `feature/centralized-incident-manager` at `2dd889d3112fc5a6a08024247cf6ca1e3cd071fb` installed from repository manifests, migrated an isolated SQLite DB, seeded the synthetic fixture twice (96 inserted on run one; 0 inserted on run two), and passed backend/shared (6 tests) and frontend test suites. A live browser session connected from UI origin `127.0.0.1:8767` to API origin `127.0.0.1:8765` via the configured CORS allowlist. No other feature branch or pending PR was involved.
+
+Authentication is absent and intentionally not represented as implemented. The API is only suitable for local/assignment development without added deployment access controls. Original customer CSV data was not present in the clone; verifying original-source transformations remains an explicit privacy/availability limitation.
 
 ## Dataset privacy and compatibility
 The original fixture contains customer-identifying data and its commit authorization could not be independently established. The committed replacement is a synthetic fixture with reserved `.invalid` emails and synthetic company, agent, and description fields; it retains the 100-row count, four rule-specific invalid records, and exact valid status/category aggregates from the briefing. Seed and validator never print or persist emails. This avoids exposing the customer PII while making clean-checkout tests deterministic.
