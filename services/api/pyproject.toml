@@ -11,8 +11,10 @@ dependencies = [
     "email-validator>=2.3.0",
     "fastapi>=0.115.0",
     "libpass[bcrypt]>=1.9.4",
+    "psycopg2-binary>=2.9.13",
     "python-jose[cryptography]>=3.5.0",
     "python-multipart>=0.0.33",
+    "sqlmodel>=0.0.50",
     "tinydb>=4.8.2",
     "uvicorn[standard]>=0.30.0",
 ]
@@ -32,3 +34,4 @@ include = ["app*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = ["postgres_integration: requires an explicitly allowlisted isolated PostgreSQL database"]

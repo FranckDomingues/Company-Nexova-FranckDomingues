@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from typing import Annotated, Literal
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator
@@ -93,6 +94,7 @@ def register_user(payload: UserRegistration, users: UserTable, profiles: Profile
     try:
         user_id = users.insert({
             "email": email,
+            "user_uuid": str(uuid4()),
             "hashed_password": hash_password(payload.password.get_secret_value()),
             "is_active": True,
             "role": "user",
