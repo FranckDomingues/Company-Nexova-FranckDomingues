@@ -23,6 +23,13 @@ Result: **55 passed, 0 skipped, 0 failed** (55 collected; one Starlette/httpx de
 
 The 29 source checkboxes are mapped one-to-one in `INVENTORY-ORM-01-CHECKLIST.md`; endpoint subchecks do not inflate the count. Evidence-based status: **28 PASS / 1 BLOCKED**. T17 is BLOCKED solely on the pre-existing seed attribution mismatch described above. Do not claim full acceptance.
 
+## T17 read-only follow-up (2026-11-14)
+
+- `app.database.get_users_table()` uses `SUPPLIER_DB_PATH` or defaults to `services/api/data/suppliers.json`. `app.inventory_seed.seed_inventory()` calls that same function; the seed does not select a separate identity store. The configured auth and seed paths are therefore consistent in this checkout.
+- The selected TinyDB file currently contains zero users and zero active users with UUIDs. The repository contains no other candidate TinyDB database or backup file. No user record was created, restored, or changed.
+- The currently configured local PostgreSQL connection succeeded but exposed no inventory tables. As a result, this read-only follow-up could not compare canonical seed UUIDs against the database currently configured in this checkout. Earlier recorded live evidence found the canonical order UUID unmatched to active users in the then-configured TinyDB; this follow-up cannot establish its historical identity or provenance.
+- No records, database rows, local configuration, or attached `.env` snapshot were changed. No destructive/reassignment action was taken. Historical attribution is **not verified**, and T17 remains **BLOCKED**.
+
 ## Caveats
 
-The Supabase pooler connection's server-reported role may be a proxy role rather than the username embedded in the URL; the test fixture uses exact local allowlists and database/schema evidence. No credentials or personal UUIDs are included in this report. Resolve the pre-existing demo seed attribution through the authorized Nexova development operator before claiming the seed-user identity condition complete.
+The Supabase pooler connection's server-reported role may be a proxy role rather than the username embedded in the URL; the test fixture uses exact local allowlists and database/schema evidence. No credentials, complete connection strings, user records or UUIDs are included in this report. To proceed, the authorized Nexova development DB owner must identify the correct isolated database/backup and either recover the original legitimate TinyDB identity through supported recovery or explicitly authorize replacement of only identified disposable canonical seed rows, preserving backup and attribution evidence. No existing UUID should be reassigned silently.
