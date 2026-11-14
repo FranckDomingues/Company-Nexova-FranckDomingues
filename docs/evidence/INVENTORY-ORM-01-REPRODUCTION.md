@@ -1,24 +1,20 @@
-# Reproduction guide
+# Professor reproduction guide
 
-## Local/offline checks
+## Local suite
 
-1. From repository root: `cd services/api`.
-2. Install/sync: `uv sync --extra dev`.
-3. Run isolated regression suite: `uv run pytest -q`.
-4. Run API: configure a local TinyDB path and JWT secret; inventory startup/schema creation activates only when `DATABASE_URL` is set.
+1. From repository root, enter `services/api`.
+2. Install dependencies with `uv sync --extra dev`.
+3. Run the complete suite: `uv run --extra dev pytest -q -rs`.
+4. Current observed run: **55 passed, 0 skipped, 0 failed**, including five real PostgreSQL tests. Without live-test configuration, the PostgreSQL tests are expected to skip and must not be called live evidence.
 
-## Supabase development verification (currently blocked here)
+## Secure live PostgreSQL setup
 
-1. In Supabase dashboard, select **Connect → Transaction pooler → URI**. Use a dedicated isolated development project/database, never production.
-2. Copy `services/api/.env.example` to `services/api/.env` locally. It is Git-ignored. Put the transaction-pooler URI (normally port 6543) only in `DATABASE_URL`; TLS is enforced as `sslmode=require`. Do not paste credentials into chat, PR text, logs, or shell commands.
-3. Set a local disposable `SUPPLIER_DB_PATH` and strong `JWT_SECRET_KEY`.
-4. For live tests, explicitly set `INVENTORY_TEST_ENV=development`, `INVENTORY_POSTGRES_TESTS=1`, and exact allowlists `INVENTORY_TEST_ALLOWED_DATABASE_HOST`, `INVENTORY_TEST_ALLOWED_DATABASE_USER`, `INVENTORY_TEST_ALLOWED_DATABASE_NAME`; the three must match `DATABASE_URL` identity parts. The tests require a `*.pooler.supabase.com` host. Run `cd services/api && uv run --extra dev pytest -q tests/test_inventory_postgres.py`. The test suite creates uniquely named rows, has no truncate/drop cleanup, and hides connection error details.
-5. Before seeding, first register a real test account through `/users` and verify a stable UUID exists in TinyDB. Do not invent or manually fabricate an identity.
-6. Seeding now fails closed unless `INVENTORY_SEED_ENV=development` is explicit and all three exact target identity allowlists are set in ignored `.env`: `INVENTORY_SEED_ALLOWED_DATABASE_HOST`, `INVENTORY_SEED_ALLOWED_DATABASE_USER`, and `INVENTORY_SEED_ALLOWED_DATABASE_NAME`. Each must exactly match the parsed host/user/database of `DATABASE_URL`, and host must be a Supabase pooler host. Run `cd services/api && uv run --extra dev pytest -q tests/test_inventory_postgres.py -k seed` for repeatable live verification. Do not run seed against a shared or production database.
-7. Live seed test verifies six assets, four entries, three exits, expected net stock, same TinyDB UUID attribution, and a zero-insert second execution. It skips unless the explicit seed configuration is present.
-8. Full live suite includes separate-connection concurrency checks; require exactly one accepted and one insufficient-stock result from two 4-unit exits against five units, with one order committed and final stock one.
-9. Clean up only uniquely tagged test assets created by tests. The seed test intentionally preserves seeded demo data for verification; dispose/reset only after confirming the project is isolated.
+1. Use only the explicitly authorized, isolated Nexova development Supabase project. In the dashboard, copy **Connect → Transaction pooler → URI**. Do not use production or a shared database.
+2. Copy `services/api/.env.example` to ignored `services/api/.env`; put the connection URI there only as `DATABASE_URL`. TLS is required (`sslmode=require`). Never place credentials in source, chat, terminal arguments, logs, commits or PR text.
+3. Add explicit `INVENTORY_TEST_ENV=development`, `INVENTORY_POSTGRES_TESTS=1`, and exact `INVENTORY_TEST_ALLOWED_DATABASE_HOST`, `INVENTORY_TEST_ALLOWED_DATABASE_USER`, `INVENTORY_TEST_ALLOWED_DATABASE_NAME` values that match the URL's host, username and database. The fixture fails closed if the file is not Git-ignored or the allowlist differs.
+4. For seed test only, additionally set `INVENTORY_SEED_ENV=development` and exact `INVENTORY_SEED_ALLOWED_DATABASE_HOST`, `INVENTORY_SEED_ALLOWED_DATABASE_USER`, `INVENTORY_SEED_ALLOWED_DATABASE_NAME`. Never run the seed against anything other than the approved isolated dev DB.
+5. Run `uv run --extra dev pytest -q -rs tests/test_inventory_postgres.py`. Tests create uniquely named disposable rows; cleanup only targets those rows. They do not drop/truncate tables. SQLModel `create_all` is additive. Never clear or alter existing seed records as a test shortcut.
+6. For an actual professor demo seed, ensure an existing authorized active TinyDB user is available and that canonical seed rows are attributed to an authorized UUID. Current existing PostgreSQL seed orders' UUID did not match an active user in the configured local TinyDB; this is explicitly unresolved. Do not invent user identity or silently rewrite existing records. Coordinate with the DB owner before resolving.
+7. Run the full suite after live tests. Review `INVENTORY-ORM-01-CHECKLIST.md` and test report: currently 28/29 official tasks PASS, T17 BLOCKED on seed attribution.
 
-## Authentication contract
-
-Writes use existing TinyDB JWT `get_current_user`. New registrations get a stable UUID; existing users lacking it receive a UUID lazily on authenticated access. GET routes are public as the Nexova briefing imposes no GET-auth requirement.
+The live concurrency test runs two simultaneous requests, verifies distinct PostgreSQL backend PIDs, and asserts one allowed commit, one HTTP 400, and nonnegative final stock. This is PostgreSQL evidence, not SQLite simulation.
