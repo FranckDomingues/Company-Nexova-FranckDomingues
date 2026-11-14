@@ -1,27 +1,21 @@
 # INVENTORY-ORM-01 — Test report
 
-## Execution status
+## Executed
 
-The official Nexova inventory briefing, official 29-task text, and Supabase credentials were unavailable. No domain endpoint, ORM entity, seed record, or real PostgreSQL integration test has been fabricated. Existing TinyDB authentication implementation was retained. Test totals below distinguish execution status from anticipated evidence.
+Command: `cd services/api && uv run pytest -q`
 
-## Executed local checks
+Result: **45 passed, 0 failed** (one upstream Starlette/httpx deprecation warning).
+- Existing auth/supplier/database tests: 34 passed.
+- New isolated inventory API, ORM, seed idempotence and relationship tests: 11 passed.
+- Test persistence: SQLite in-memory via SQLModel solely as an isolated test double. It does not verify PostgreSQL semantics or establish Supabase connectivity.
 
-| Suite/check | Result |
-|---|---|
-| Existing API full regression suite + added utility tests | **34 passed, 0 failed** (`uv run pytest -q`); one upstream Starlette/httpx deprecation warning |
-| Inventory arithmetic/unit tests | **4 passed** (included in total) |
-| PostgreSQL URL configuration tests | **4 passed** (included in total); no network connection performed |
-| `git diff --check` | **PASS** |
-| `.env` ignore check | **PASS** (`services/api/.gitignore` ignores `.env*`, except `.env.example`) |
-| Real Supabase connection / PostgreSQL integration | **BLOCKED** — DATABASE_URL/approved credentials absent |
-| Inventory API/auth/stock/locking/seed tests | **BLOCKED** — domain source unavailable |
+Covered: all six routes; initial-zero/derived stock; SKU uniqueness; validation of category/office/quantity/assignment; office consistency; not-found; authenticated UUID attribution; missing auth; invalid exit no-write and exact error; foreign-key metadata/no PostgreSQL users table; response fields; order query count <=2.
 
-## Test commands
+## Not verified / blocked
 
-```sh
-cd services/api
-uv sync --extra dev
-uv run pytest -q
-```
+- No `services/api/.env` or `DATABASE_URL` exists in this checkout. No live Supabase/PostgreSQL test was run.
+- PostgreSQL `SELECT ... FOR UPDATE` behavior under two simultaneous transactions, production schema initialization, live foreign-key/check constraints, and seed execution are unverified.
+- Concurrency test is pending live PostgreSQL. SQLite ignores PostgreSQL row-level locking and is not presented as equivalent proof.
+- Seed command tests with a real TinyDB UUID in the isolated development DB are pending; no user or Supabase data was created.
 
-Tests use pure deterministic arithmetic and configuration checks only. They do not claim PostgreSQL reachability, table creation, request/transaction behavior, concurrency guarantees, or domain-specific compliance.
+The official 29-item status matrix is `INVENTORY-ORM-01-CHECKLIST.md`.

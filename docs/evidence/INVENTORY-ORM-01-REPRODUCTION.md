@@ -1,28 +1,24 @@
-# INVENTORY-ORM-01 — Reproduction and current blocker
+# Reproduction guide
 
-## Current branch state
+## Local/offline checks
 
-This checkout contains the API infrastructure groundwork but **not a runnable inventory feature**. The domain task is blocked because the company-specific inventory briefing and the official 29-task milestone rubric were not found. Do not infer schema, stock partition, authorization, or seed values from unrelated supplier data.
+1. From repository root: `cd services/api`.
+2. Install/sync: `uv sync --extra dev`.
+3. Run isolated regression suite: `uv run pytest -q`.
+4. Run API: configure a local TinyDB path and JWT secret; inventory startup/schema creation activates only when `DATABASE_URL` is set.
 
-## Existing TinyDB regression
+## Supabase development verification (currently blocked here)
 
-```sh
-cd services/api
-uv sync --extra dev
-uv run pytest -q
-```
+1. In Supabase dashboard, select **Connect → Transaction pooler → URI**. Use a dedicated isolated development project/database, not production.
+2. Create `services/api/.env` locally (it is ignored by Git) and set `DATABASE_URL` to that transaction-pooler URI (usually port 6543). Do not paste it into chat, issue/PR text, logs, or shell command arguments. Existing `sql_database.py` requires PostgreSQL and enforces `sslmode=require`.
+3. Set `SUPPLIER_DB_PATH` to a disposable local TinyDB JSON file and a strong local `JWT_SECRET_KEY`. Never reuse production credentials.
+4. Register a test account using `/users`; registration creates its UUID in TinyDB. Do not seed imaginary users.
+5. Start the API once to initialize `Asset`, `AssetEntry`, and `AssetExit` tables in the isolated database. Verify connection first in a non-destructive manner.
+6. With `INVENTORY_SEED_ENV=development`, run from `services/api`: `uv run python -c 'from app.inventory_seed import seed_inventory; print(seed_inventory())'`. The seed command refuses to fabricate users and is idempotent.
+7. Verify six SKUs, four-plus entries, three-plus exits, and `GET /inventory/products` net stock. Verify `NXV-IT-001` net 12 after entries 10+5 minus allocation 2 and consumption 1; `NXV-PER-001` net 17 after 20 minus allocation 3.
+8. Run authorized live integration tests, including concurrent exits against one asset; record the sanitized host/project identifier and outcome only. Never output the connection string.
+9. Remove/dispose the dedicated development data only after verification, with explicit confirmation of the isolated project.
 
-Use a local disposable TinyDB path and a local JWT secret of at least 32 characters when manually running the auth API. The included auth tests use isolated fixtures.
+## Authentication contract
 
-## PostgreSQL setup when the official requirements are supplied
-
-1. Obtain the approved Supabase project and use its **transaction pooler** connection URI (typically port `6543`).
-2. Copy `.env.example` to `.env`; set `DATABASE_URL` locally. The application validates PostgreSQL scheme and enforces `sslmode=require`. Never commit `.env` or paste the full connection URI into tickets, logs, screenshots, or reports.
-3. Ensure the test user/project is explicitly approved and disposable before running integration tests. Never run destructive fixture cleanup against production data.
-4. Implement and review the exact briefing-defined models, migrations/schema creation, routes, and seed records before expecting inventory commands to work.
-
-At present no real Supabase connection has been established and there is no seed command. The sample URI format is a template only, not a credential.
-
-## Verification performed in this checkout
-
-`cd services/api && uv sync --extra dev && uv run pytest -q` completed with **34 passed, 0 failed**. `git diff --check` passed. These results verify the existing TinyDB regression suite plus pure stock/configuration helpers only; they do not mean any inventory endpoint or Supabase connection is available.
+Writes use existing TinyDB JWT `get_current_user`. New registrations get a stable UUID; existing users lacking it receive a UUID lazily on authenticated access. GET routes are public as the Nexova briefing imposes no GET-auth requirement.

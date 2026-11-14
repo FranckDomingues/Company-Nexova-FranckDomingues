@@ -3,6 +3,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+from uuid import uuid4
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -75,6 +76,13 @@ def get_current_user(
     user = table.get(doc_id=user_id)
     if user is None or user.get("id") != user_id or not user.get("is_active", False):
         raise unauthorized
+    # Existing TinyDB records predate the stable UUID field; lazily add one without
+    # moving ownership or copying users to PostgreSQL.
+    if not user.get("user_uuid"):
+        user_uuid = str(uuid4())
+        table.update({"user_uuid": user_uuid}, doc_ids=[user_id])
+        user = dict(user)
+        user["user_uuid"] = user_uuid
     return dict(user)
 
 
