@@ -133,6 +133,7 @@ def test_seed_is_idempotent_with_existing_tinydb_user(monkeypatch, tmp_path):
     tiny = TinyDB(tmp_path / "users.json")
     tiny.table("users").insert({"id": 4, "is_active": True, "user_uuid": "d67bdd0d-dd09-49c9-9fc3-8aac1130217d"})
     monkeypatch.setenv("INVENTORY_SEED_ENV", "development")
+    monkeypatch.setattr(seed, "_assert_seed_database_is_approved", lambda: None)
     monkeypatch.setattr(seed, "get_engine", lambda: engine)
     monkeypatch.setattr(seed, "get_users_table", lambda: tiny.table("users"))
     first = seed.seed_inventory()

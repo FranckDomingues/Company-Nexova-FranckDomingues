@@ -9,15 +9,15 @@
 
 ## Supabase development verification (currently blocked here)
 
-1. In Supabase dashboard, select **Connect → Transaction pooler → URI**. Use a dedicated isolated development project/database, not production.
-2. Create `services/api/.env` locally (it is ignored by Git) and set `DATABASE_URL` to that transaction-pooler URI (usually port 6543). Do not paste it into chat, issue/PR text, logs, or shell command arguments. Existing `sql_database.py` requires PostgreSQL and enforces `sslmode=require`.
-3. Set `SUPPLIER_DB_PATH` to a disposable local TinyDB JSON file and a strong local `JWT_SECRET_KEY`. Never reuse production credentials.
-4. Register a test account using `/users`; registration creates its UUID in TinyDB. Do not seed imaginary users.
-5. Start the API once to initialize `Asset`, `AssetEntry`, and `AssetExit` tables in the isolated database. Verify connection first in a non-destructive manner.
-6. With `INVENTORY_SEED_ENV=development`, run from `services/api`: `uv run python -c 'from app.inventory_seed import seed_inventory; print(seed_inventory())'`. The seed command refuses to fabricate users and is idempotent.
-7. Verify six SKUs, four-plus entries, three-plus exits, and `GET /inventory/products` net stock. Verify `NXV-IT-001` net 12 after entries 10+5 minus allocation 2 and consumption 1; `NXV-PER-001` net 17 after 20 minus allocation 3.
-8. Run authorized live integration tests, including concurrent exits against one asset; record the sanitized host/project identifier and outcome only. Never output the connection string.
-9. Remove/dispose the dedicated development data only after verification, with explicit confirmation of the isolated project.
+1. In Supabase dashboard, select **Connect → Transaction pooler → URI**. Use a dedicated isolated development project/database, never production.
+2. Copy `services/api/.env.example` to `services/api/.env` locally. It is Git-ignored. Put the transaction-pooler URI (normally port 6543) only in `DATABASE_URL`; TLS is enforced as `sslmode=require`. Do not paste credentials into chat, PR text, logs, or shell commands.
+3. Set a local disposable `SUPPLIER_DB_PATH` and strong `JWT_SECRET_KEY`.
+4. For live tests, explicitly set `INVENTORY_TEST_ENV=development`, `INVENTORY_POSTGRES_TESTS=1`, and exact allowlists `INVENTORY_TEST_ALLOWED_DATABASE_HOST`, `INVENTORY_TEST_ALLOWED_DATABASE_USER`, `INVENTORY_TEST_ALLOWED_DATABASE_NAME`; the three must match `DATABASE_URL` identity parts. The tests require a `*.pooler.supabase.com` host. Run `cd services/api && uv run --extra dev pytest -q tests/test_inventory_postgres.py`. The test suite creates uniquely named rows, has no truncate/drop cleanup, and hides connection error details.
+5. Before seeding, first register a real test account through `/users` and verify a stable UUID exists in TinyDB. Do not invent or manually fabricate an identity.
+6. Seeding now fails closed unless `INVENTORY_SEED_ENV=development` is explicit and all three exact target identity allowlists are set in ignored `.env`: `INVENTORY_SEED_ALLOWED_DATABASE_HOST`, `INVENTORY_SEED_ALLOWED_DATABASE_USER`, and `INVENTORY_SEED_ALLOWED_DATABASE_NAME`. Each must exactly match the parsed host/user/database of `DATABASE_URL`, and host must be a Supabase pooler host. Run `cd services/api && uv run --extra dev pytest -q tests/test_inventory_postgres.py -k seed` for repeatable live verification. Do not run seed against a shared or production database.
+7. Live seed test verifies six assets, four entries, three exits, expected net stock, same TinyDB UUID attribution, and a zero-insert second execution. It skips unless the explicit seed configuration is present.
+8. Full live suite includes separate-connection concurrency checks; require exactly one accepted and one insufficient-stock result from two 4-unit exits against five units, with one order committed and final stock one.
+9. Clean up only uniquely tagged test assets created by tests. The seed test intentionally preserves seeded demo data for verification; dispose/reset only after confirming the project is isolated.
 
 ## Authentication contract
 

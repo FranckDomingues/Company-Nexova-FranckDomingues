@@ -1,21 +1,26 @@
-# INVENTORY-ORM-01 — Test report
+# INVENTORY-ORM-01 — Test report (updated for INVENTORY-ORM-03)
 
-## Executed
+## Current execution
 
-Command: `cd services/api && uv run pytest -q`
+Command: `cd services/api && uv run --extra dev pytest -q -rs`
+Result: **50 passed, 5 skipped, 0 failed** (55 collected); one upstream Starlette/httpx deprecation warning. The five tests were skipped because `services/api/.env` is absent. The live PostgreSQL marker is registered in `pyproject.toml`.
 
-Result: **45 passed, 0 failed** (one upstream Starlette/httpx deprecation warning).
-- Existing auth/supplier/database tests: 34 passed.
-- New isolated inventory API, ORM, seed idempotence and relationship tests: 11 passed.
-- Test persistence: SQLite in-memory via SQLModel solely as an isolated test double. It does not verify PostgreSQL semantics or establish Supabase connectivity.
+- Existing regression tests: **34 passed**.
+- Offline inventory, seed-safety, and configuration tests: **16 passed**.
+- Opt-in real PostgreSQL tests collected: **5 skipped**. These cover table/constraint checks, live API stock persistence, real TinyDB login to PostgreSQL order attribution, two-connection concurrency, and live authorized seed verification.
+- The final run was executed after adding a test fixture that removes ambient shell `DATABASE_URL` for non-PostgreSQL tests. No PostgreSQL test was executed. No live test result is inferred from SQLite.
 
-Covered: all six routes; initial-zero/derived stock; SKU uniqueness; validation of category/office/quantity/assignment; office consistency; not-found; authenticated UUID attribution; missing auth; invalid exit no-write and exact error; foreign-key metadata/no PostgreSQL users table; response fields; order query count <=2.
+## Local verification
 
-## Not verified / blocked
+The isolated test double covers all six routes, derived stock, validation, UUID attribution through an overridden identity, missing auth, office consistency, exact insufficient-stock message/no-write, metadata FKs, order response query count, and seed algorithm/idempotence. Seed-safety tests verify that an absent `INVENTORY_SEED_ENV` fails closed and that development host/user/database allowlists must exactly match parsed `DATABASE_URL` identity components.
 
-- No `services/api/.env` or `DATABASE_URL` exists in this checkout. No live Supabase/PostgreSQL test was run.
-- PostgreSQL `SELECT ... FOR UPDATE` behavior under two simultaneous transactions, production schema initialization, live foreign-key/check constraints, and seed execution are unverified.
-- Concurrency test is pending live PostgreSQL. SQLite ignores PostgreSQL row-level locking and is not presented as equivalent proof.
-- Seed command tests with a real TinyDB UUID in the isolated development DB are pending; no user or Supabase data was created.
+## Live PostgreSQL status
 
-The official 29-item status matrix is `INVENTORY-ORM-01-CHECKLIST.md`.
+- `services/api/.env` is absent; no `DATABASE_URL` was read from a local file, and no live PostgreSQL test ran.
+- Actual TinyDB login-to-order attribution: **BLOCKED** (the real TinyDB + PostgreSQL integration test is present but skipped).
+- PostgreSQL table/FK/check/unique constraints and computed stock persistence: **BLOCKED**.
+- Two independent PostgreSQL connections and concurrent outbound race: **BLOCKED**; SQLite locking is not evidence.
+- Live idempotent seed and exact seeded records/net stock: **BLOCKED**.
+- Supabase startup DDL/connectivity: **BLOCKED**.
+
+The authoritative checklist has exactly 29 official tasks. Current evidence-based summary: **17 PASS / 12 BLOCKED**; see `INVENTORY-ORM-01-CHECKLIST.md`. The PASS label is limited to local implementation verification and does not imply full official acceptance.

@@ -16,10 +16,14 @@ Dedicated `/inventory` router implements GET products/list, POST product, GET pr
 
 Stock is `SUM(AssetEntry.quantity) - SUM(AssetExit.quantity)` for the asset. List view uses grouped aggregates, and order listing uses two joined queries rather than per-order relationship access. Outbound locks the parent asset row with PostgreSQL `FOR UPDATE`, checks stock before adding an exit, then commits; exceptions rollback. This serialization strategy requires real PostgreSQL verification; SQLite test fixtures do not exercise row locks.
 
-## Development seed
+## Development seed safety
 
-`app.inventory_seed.seed_inventory()` inserts six exact assets, four entries and three exits, associated only with an existing active TinyDB user UUID. It is limited to `INVENTORY_SEED_ENV=development`, uses unique SKU and order match keys for idempotence, and does not invent a user. See reproduction steps.
+`app.inventory_seed.seed_inventory()` inserts the exact six assets, four entries, and three exits and only uses an existing active TinyDB UUID; it never creates/guesses users. It now **fails closed** unless `INVENTORY_SEED_ENV=development` is explicitly present (unset is not consent). It also requires `DATABASE_URL` to identify a Supabase transaction-pooler host and requires exact nonsecret allowlist matches for `INVENTORY_SEED_ALLOWED_DATABASE_HOST`, `INVENTORY_SEED_ALLOWED_DATABASE_USER`, and `INVENTORY_SEED_ALLOWED_DATABASE_NAME`. No operation can proceed from an env-label alone. Idempotence matches asset/order facts, not a client-provided user. Local seed safety tests exercise the gate; live seeding is separately opt-in and protected by the same checks.
+
+## Live integration tests
+
+`tests/test_inventory_postgres.py` contains five PostgreSQL-only integration tests. They skip unless ignored `services/api/.env` has `INVENTORY_POSTGRES_TESTS=1`, a PostgreSQL transaction-pooler `DATABASE_URL`, and an exact `INVENTORY_TEST_ALLOWED_DATABASE_HOST` match. The suite never substitutes SQLite, never drops tables/truncates data, uses unique test SKUs, suppresses exception strings that could reveal credentials, and tests real schema/FK/check/unique behavior, DB-backed stock/order persistence, actual temporary TinyDB registration/login/UUID attribution, concurrent outbound calls over two independent `pg_backend_pid()` connections, and allowlisted seed idempotence.
 
 ## Verification status
 
-44 local tests pass (34 retained and 10 inventory). These use isolated in-memory SQLite for inventory route/ORM behavior. Supabase connectivity, SQLModel live DDL, live seeds, and PostgreSQL concurrency remain BLOCKED because no authorized `DATABASE_URL` is configured. No live Supabase PASS is claimed.
+Latest suite: 50 passed, 5 PostgreSQL tests skipped, 0 failed. Local inventory application tests use isolated in-memory SQLite only. The local TinyDB authentication route remains covered by regression tests, but the required TinyDB-to-real-PostgreSQL order test is not executed. No Supabase URL is configured, so PostgreSQL DDL/constraints, order persistence, live seed, and concurrency are BLOCKED. No live Supabase PASS is claimed. Exact 29-task matrix is 20 PASS / 9 BLOCKED, with live/database items explicitly blocked.
