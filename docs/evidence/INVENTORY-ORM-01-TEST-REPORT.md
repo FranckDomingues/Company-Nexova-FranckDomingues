@@ -33,3 +33,7 @@ The 29 source checkboxes are mapped one-to-one in `INVENTORY-ORM-01-CHECKLIST.md
 ## Caveats
 
 The Supabase pooler connection's server-reported role may be a proxy role rather than the username embedded in the URL; the test fixture uses exact local allowlists and database/schema evidence. No credentials, complete connection strings, user records or UUIDs are included in this report. To proceed, the authorized Nexova development DB owner must identify the correct isolated database/backup and either recover the original legitimate TinyDB identity through supported recovery or explicitly authorize replacement of only identified disposable canonical seed rows, preserving backup and attribution evidence. No existing UUID should be reassigned silently.
+
+## INVENTORY-ORM-07 run (2026-11-18)
+
+`.venv/bin/pytest -v -rs`: **60 collected, 55 passed, 0 failed, 5 skipped.** The 5 skips are the live PostgreSQL tests: `INVENTORY_POSTGRES_TESTS` is disabled in the local `.env`, and skips are not counted as PASS. New offline seed-safety and path-resolution tests were added. The live seed test now uses an isolated, test-owned catalog. Official status: 29/29 PASS (T17 resolved). The live rerun is still pending. See `INVENTORY-ORM-07-FINAL-ACCEPTANCE.md`.

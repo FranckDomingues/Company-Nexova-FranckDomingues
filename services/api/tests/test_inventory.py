@@ -135,7 +135,10 @@ def test_seed_is_idempotent_with_existing_tinydb_user(monkeypatch, tmp_path):
     monkeypatch.setenv("INVENTORY_SEED_ENV", "development")
     monkeypatch.setattr(seed, "_assert_seed_database_is_approved", lambda: None)
     monkeypatch.setattr(seed, "get_engine", lambda: engine)
-    monkeypatch.setattr(seed, "get_users_table", lambda: tiny.table("users"))
+    # Simulate the configured persistent TinyDB store (the real check rejects temp dirs).
+    tiny.close()
+    monkeypatch.setenv("SUPPLIER_DB_PATH", str(tmp_path / "users.json"))
+    monkeypatch.setattr(seed, "_temporary_roots", lambda: [tmp_path / "not-this-store"])
     first = seed.seed_inventory()
     second = seed.seed_inventory()
     assert first == {"assets": 6, "entries": 4, "exits": 3}
@@ -154,7 +157,9 @@ def test_seed_is_idempotent_with_existing_tinydb_user(monkeypatch, tmp_path):
         outbound_mouse = db.scalar(__import__("sqlalchemy").select(func.sum(AssetExit.quantity)).where(AssetExit.asset_id == mouse.id))
         assert inbound_it - outbound_it == 12
         assert inbound_mouse - outbound_mouse == 17
-    tiny.close()
+        owners = {r.user_uuid for r in db.scalars(__import__("sqlalchemy").select(AssetEntry)).all()}
+        owners |= {r.user_uuid for r in db.scalars(__import__("sqlalchemy").select(AssetExit)).all()}
+        assert owners == {"d67bdd0d-dd09-49c9-9fc3-8aac1130217d"}
     engine.dispose()
 
 

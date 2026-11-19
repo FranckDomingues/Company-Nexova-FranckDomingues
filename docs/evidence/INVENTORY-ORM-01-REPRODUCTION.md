@@ -18,3 +18,10 @@
 7. Run the full suite after live tests. Review `INVENTORY-ORM-01-CHECKLIST.md` and test report: recorded status remains 28/29 official tasks PASS, T17 BLOCKED. The follow-up was read-only and is not a new live integration test run.
 
 The live concurrency test runs two simultaneous requests, verifies distinct PostgreSQL backend PIDs, and asserts one allowed commit, one HTTP 400, and nonnegative final stock. This is PostgreSQL evidence, not SQLite simulation.
+
+## Update (INVENTORY-ORM-07)
+
+- `SUPPLIER_DB_PATH` may be relative; it is resolved against `services/api`, not the working directory.
+- The canonical seed (`python -m app.inventory_seed`, from `services/api`) uses the first active user of the configured persistent TinyDB. It refuses temporary stores and takes no user override.
+- The live seed test seeds a unique `TST-<hex>-` catalog and removes it; it never creates or changes `NXV-*` rows.
+- Step 6 above is now satisfied: canonical orders are attributed to a persistent user registered via `POST /users`. Status: 29/29.

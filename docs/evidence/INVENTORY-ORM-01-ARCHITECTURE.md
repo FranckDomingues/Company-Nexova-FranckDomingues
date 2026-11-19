@@ -29,3 +29,7 @@ The seed command requires explicit `INVENTORY_SEED_ENV=development`, a Supabase 
 ## Executed validation
 
 `cd services/api && uv run --extra dev pytest -q -rs`: **55 passed, 0 skipped, 0 failed**; five tests used real PostgreSQL. Those five covered schema/FK/check/unique constraints, API persistence and stock/no-write behavior, real TinyDB login/JWT attribution, concurrent outbound requests on independent connections, and live seed counts/net stock/GET/idempotency. Full details and conservative 29-task matrix are in the test report and checklist. No secrets, URLs, or UUIDs are documented.
+
+## Seed ownership (INVENTORY-ORM-07)
+
+`app.database.resolve_database_path()` anchors relative `SUPPLIER_DB_PATH` values to `services/api`. `app.inventory_seed.seed_inventory(session=None)` reads its owner only from that configured, non-temporary TinyDB. `apply_seed_catalog()` is the shared idempotent mechanism, and it runs inside the caller's transaction. Tests use it with isolated catalogs, so temporary users cannot become owners of canonical seed records.

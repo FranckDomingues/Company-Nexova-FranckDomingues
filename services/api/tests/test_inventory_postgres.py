@@ -356,14 +356,18 @@ def test_postgres_concurrent_exits_do_not_oversell(pg_engine):
 
 @pytest.mark.postgres_integration
 def test_postgres_seed_exact_counts_net_stock_and_idempotency(pg_engine, tmp_path, monkeypatch):
+    """Exercise the seed mechanism on an isolated, test-owned catalog.
+
+    The ephemeral TinyDB user owns only uniquely prefixed TEST SKUs, which are removed
+    afterwards. Canonical NXV-* demo rows are only read, never created or modified.
+    """
     from fastapi.testclient import TestClient
     from app.database import get_profiles_table, get_users_table
     from app.inventory_models import Asset, AssetEntry, AssetExit
-    from app.inventory_seed import seed_inventory
+    from app.inventory_seed import CANONICAL_CATALOG, SeedCatalog, apply_seed_catalog, seed_inventory
     from app.main import app
     from app.sql_database import get_db
     from app.sql_database import database_url_from_environment
-    from app import inventory_seed as seed_module
     from tinydb import TinyDB
 
     values = _configured_values()
@@ -378,60 +382,90 @@ def test_postgres_seed_exact_counts_net_stock_and_idempotency(pg_engine, tmp_pat
     if values.get("INVENTORY_SEED_ALLOWED_DATABASE_NAME", "").strip() != (parsed_url.database or ""):
         pytest.fail("Refusing seed verification: seed database allowlist does not match the development database")
 
+    prefix = f"TST-{uuid4().hex[:10].upper()}-"
+    catalog = SeedCatalog(
+        assets=[(name, prefix + sku, category, office) for name, sku, category, office in CANONICAL_CATALOG.assets],
+        entries=[(prefix + sku, qty, supplier) for sku, qty, supplier in CANONICAL_CATALOG.entries],
+        exits=[(prefix + sku, qty, kind, assigned) for sku, qty, kind, assigned in CANONICAL_CATALOG.exits],
+    )
+    expected = {
+        "NXV-IT-001": 12, "NXV-IT-002": 8, "NXV-PER-001": 17,
+        "NXV-PER-002": 0, "NXV-OFF-001": 0, "NXV-TRN-001": 0,
+    }
+    canonical_skus = list(expected)
+
+    def canonical_snapshot(session):
+        assets = session.scalars(select(Asset).where(Asset.sku.in_(canonical_skus)).order_by(Asset.id)).all()
+        ids = [a.id for a in assets]
+        entries = session.scalars(select(AssetEntry).where(AssetEntry.asset_id.in_(ids)).order_by(AssetEntry.id)).all()
+        exits = session.scalars(select(AssetExit).where(AssetExit.asset_id.in_(ids)).order_by(AssetExit.id)).all()
+        return [r.model_dump() for r in assets + entries + exits]
+
     tinydb = TinyDB(tmp_path / "inventory-seed-users.json")
     users = tinydb.table("users")
     profiles = tinydb.table("profiles")
     monkeypatch.setenv("JWT_SECRET_KEY", "postgres-seed-integration-test-secret-key")
     app.dependency_overrides[get_users_table] = lambda: users
     app.dependency_overrides[get_profiles_table] = lambda: profiles
+    with Session(pg_engine) as session:
+        canonical_before = canonical_snapshot(session)
     try:
         with TestClient(app) as client:
             registration = client.post("/users", json={"email": f"seed-{uuid4().hex}@example.com", "password": "seed-integration-password-123"})
             assert registration.status_code == 201
         user = users.get(doc_id=registration.json()["id"])
         assert user and user.get("is_active") and user.get("user_uuid")
+        ephemeral_uuid = user["user_uuid"]
+
+        # The canonical seed must refuse an ephemeral, temporary identity store.
+        monkeypatch.setenv("SUPPLIER_DB_PATH", str(tmp_path / "inventory-seed-users.json"))
         monkeypatch.setenv("INVENTORY_SEED_ENV", "development")
         monkeypatch.setenv("INVENTORY_SEED_ALLOWED_DATABASE_HOST", url_host)
         monkeypatch.setenv("INVENTORY_SEED_ALLOWED_DATABASE_USER", parsed_url.username or "")
         monkeypatch.setenv("INVENTORY_SEED_ALLOWED_DATABASE_NAME", parsed_url.database or "")
-        monkeypatch.setattr(seed_module, "get_users_table", lambda: users)
+        with pytest.raises(RuntimeError, match="temporary"):
+            seed_inventory()
+
+        with Session(pg_engine) as session:
+            first = apply_seed_catalog(session, catalog, ephemeral_uuid)
+            session.commit()
+        with Session(pg_engine) as session:
+            second = apply_seed_catalog(session, catalog, ephemeral_uuid)
+            session.commit()
+        assert first == {"assets": 6, "entries": 4, "exits": 3}
+        assert second == {"assets": 0, "entries": 0, "exits": 0}
+
         def database_dependency():
             with Session(pg_engine) as session:
                 yield session
         app.dependency_overrides[get_db] = database_dependency
-        # The canonical seed may already exist in this shared development DB.
-        # The command is additive/idempotent, so verify its resulting state rather
-        # than assuming this invocation must insert every record.
-        first = seed_inventory()
-        second = seed_inventory()
-        assert set(first) == {"assets", "entries", "exits"}
-        assert all(isinstance(count, int) and count >= 0 for count in first.values())
-        assert second == {"assets": 0, "entries": 0, "exits": 0}
-        expected = {
-            "NXV-IT-001": ("Portátil 14\" Business", "hardware", "Valencia", 12),
-            "NXV-IT-002": ("Portátil 14\" Business", "hardware", "Miami", 8),
-            "NXV-PER-001": ("Ratón ergonómico", "peripherals", "Valencia", 17),
-            "NXV-PER-002": ("Hub USB-C", "peripherals", "Miami", 0),
-            "NXV-OFF-001": ("Resma de papel A4", "office_supplies", "Valencia", 0),
-            "NXV-TRN-001": ("Cuaderno de formación en liderazgo", "training_materials", "Valencia", 0),
-        }
         with Session(pg_engine) as session:
-            assets = session.scalars(select(Asset).where(Asset.sku.in_(expected))).all()
+            assets = session.scalars(select(Asset).where(Asset.sku.startswith(prefix))).all()
             assert len(assets) == 6
-            assert len(session.scalars(select(AssetEntry).where(AssetEntry.asset_id.in_([a.id for a in assets]))).all()) == 4
-            assert len(session.scalars(select(AssetExit).where(AssetExit.asset_id.in_([a.id for a in assets]))).all()) == 3
+            ids = [a.id for a in assets]
+            entries = session.scalars(select(AssetEntry).where(AssetEntry.asset_id.in_(ids))).all()
+            exits = session.scalars(select(AssetExit).where(AssetExit.asset_id.in_(ids))).all()
+            assert (len(entries), len(exits)) == (4, 3)
+            assert {row.user_uuid for row in entries + exits} == {ephemeral_uuid}
             for asset in assets:
-                name, category, office, stock = expected[asset.sku]
-                assert (asset.name, asset.category, asset.office) == (name, category, office)
-                entries = session.scalars(select(AssetEntry).where(AssetEntry.asset_id == asset.id)).all()
-                exits = session.scalars(select(AssetExit).where(AssetExit.asset_id == asset.id)).all()
-                assert all(row.user_uuid for row in entries + exits)
-                assert sum(row.quantity for row in entries) - sum(row.quantity for row in exits) == stock
+                stock = sum(r.quantity for r in entries if r.asset_id == asset.id) - sum(r.quantity for r in exits if r.asset_id == asset.id)
+                assert stock == expected[asset.sku.removeprefix(prefix)]
         with TestClient(app) as client:
             response = client.get("/inventory/products")
             assert response.status_code == 200
             listed = {row["sku"]: row for row in response.json()}
-            assert all(listed[sku]["current_stock"] == values[3] for sku, values in expected.items())
+            assert all(listed[prefix + sku]["current_stock"] == stock for sku, stock in expected.items())
+            if all(sku in listed for sku in canonical_skus):
+                assert all(listed[sku]["current_stock"] == stock for sku, stock in expected.items())
+
+        with Session(pg_engine) as session:
+            canonical_after = canonical_snapshot(session)
+        assert canonical_after == canonical_before, "canonical seed rows must not be modified by tests"
+        assert all(row.get("user_uuid") != ephemeral_uuid for row in canonical_after)
     finally:
         app.dependency_overrides.clear()
         tinydb.close()
+        for _, sku, _, _ in catalog.assets:
+            _cleanup_sku(pg_engine, sku)
+    with Session(pg_engine) as session:
+        assert session.scalars(select(Asset).where(Asset.sku.startswith(prefix))).first() is None

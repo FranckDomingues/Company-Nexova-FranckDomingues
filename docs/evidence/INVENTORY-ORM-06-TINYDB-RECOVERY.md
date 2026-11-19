@@ -93,3 +93,7 @@ T17 requires canonical seed orders attributed to an authorized active TinyDB use
 Separately recommended: change the live seed test so it never becomes the first writer of canonical rows (for example, skip or fail when the canonical rows are absent and an authorized user is not configured). Otherwise the problem recurs on any fresh database.
 
 No passwords, hashes, tokens, full UUIDs, e-mail addresses, or connection strings are recorded here.
+
+## Outcome (INVENTORY-ORM-07)
+
+The owner chose option 1 (authorized replacement). The seven orders were backed up and replaced 7/7, and are now attributed to a persistent active TinyDB user. The recommended cwd fix and the live seed-test fix are implemented. T17: PASS. See `INVENTORY-ORM-07-FINAL-ACCEPTANCE.md`.
