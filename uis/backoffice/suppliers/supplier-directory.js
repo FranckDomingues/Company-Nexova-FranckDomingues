@@ -1,5 +1,23 @@
 (() => {
   const API_BASE = window.NEXOVA_API_URL || 'http://127.0.0.1:8000';
+  // AUTH-02: private page guarded by NexovaAuth (JWT in localStorage, validated with GET /auth/me).
+  const LOGIN_PATH = '/backoffice/login';
+  const SELF_PATH = '/backoffice/';
+  const authStatus = document.querySelector('#auth-status');
+  const main = document.querySelector('#main');
+  const accountTools = document.querySelector('#account-tools');
+  if (!window.NexovaAuth) {
+    authStatus.textContent = 'No se pudo cargar el módulo de autenticación. Recarga la página.';
+    authStatus.setAttribute('role', 'alert');
+    return;
+  }
+  const session = window.NexovaAuth.createAuthSession({ apiBase: API_BASE });
+  function redirectToLogin(reason) {
+    session.logout();
+    const params = new URLSearchParams({ next: SELF_PATH });
+    if (reason) params.set('reason', reason);
+    window.location.replace(`${LOGIN_PATH}?${params}`);
+  }
   const categories = [
     ['job_boards', 'Plataformas de empleo'], ['ats_software', 'Software ATS'],
     ['assessment_tools', 'Herramientas de evaluación'], ['training_platforms', 'Plataformas de formación'],
@@ -24,7 +42,20 @@
     message.className = `mt-5 rounded-md border px-4 py-3 text-sm ${isError ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`;
   }
   async function api(path, options = {}) {
-    const response = await fetch(`${API_BASE}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+    const authorization = session.getAuthorizationHeader();
+    if (!authorization) { redirectToLogin('session'); throw new Error('Tu sesión no es válida o ha caducado.'); }
+    let response;
+    try {
+      response = await fetch(`${API_BASE}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}), Authorization: authorization } });
+    } catch {
+      throw new Error('No se pudo conectar con la API de Nexova. Comprueba tu conexión e inténtalo de nuevo.');
+    }
+    if (response.status === 401) {
+      // Only invalidate if the rejected token is still the current one (a newer login wins).
+      if (session.getAuthorizationHeader() === authorization) redirectToLogin('session');
+      throw new Error('Tu sesión no es válida o ha caducado. Inicia sesión de nuevo.');
+    }
+    if (response.status === 403) throw new Error('Tu cuenta no tiene permisos para el directorio de proveedores (requiere rol manager o admin).');
     if (!response.ok) {
       let detail = `Error de API (${response.status})`;
       try { const payload = await response.json(); detail = Array.isArray(payload.detail) ? payload.detail.map(e => `${e.loc.slice(1).join('.')}: ${e.msg}`).join('; ') : payload.detail || detail; } catch { /* response without JSON */ }
@@ -59,7 +90,7 @@
   }
   async function load() {
     try { suppliers = await api('/suppliers'); render(); }
-    catch (error) { rows.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-rose-700">No se pudo cargar el directorio. Comprueba que la API esté disponible.</td></tr>'; showMessage(error.message, true); }
+    catch (error) { rows.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-rose-700">No se pudo cargar el directorio.</td></tr>'; showMessage(error.message, true); }
   }
   for (const select of [categoryFilter, form.elements.categories]) {
     for (const [value, label] of categories) { const option = document.createElement('option'); option.value = value; option.textContent = label; select.append(option); }
@@ -97,5 +128,31 @@
       suppliers = suppliers.map(s => s.id === updated.id ? updated : s); rateDialog.close(); rateForm.reset(); render(); showMessage(`Tarifa de ${updated.name} actualizada.`);
     } catch (error) { document.querySelector('#rate-error').textContent = error.message; }
   });
-  load();
+  accountTools?.querySelector('[data-logout]')?.addEventListener('click', () => {
+    session.logout();
+    window.location.replace(`${LOGIN_PATH}?reason=logout`);
+  });
+  // Logged out in another tab: leave immediately.
+  window.addEventListener('storage', event => {
+    if ((event.key === null || event.key === window.NexovaAuth.TOKEN_STORAGE_KEY) && !session.getAuthorizationHeader()) redirectToLogin();
+  });
+  async function start() {
+    if (!session.getAuthorizationHeader()) { redirectToLogin(); return; }
+    let account;
+    try { account = await session.verify(); }
+    catch (error) {
+      authStatus.textContent = `No se pudo verificar tu sesión: ${error.message}`;
+      authStatus.setAttribute('role', 'alert');
+      return;
+    }
+    if (!account) { redirectToLogin('session'); return; }
+    authStatus.hidden = true;
+    main.hidden = false;
+    if (accountTools) {
+      accountTools.hidden = false;
+      accountTools.querySelector('[data-account-email]').textContent = account.email;
+    }
+    await load();
+  }
+  start();
 })();

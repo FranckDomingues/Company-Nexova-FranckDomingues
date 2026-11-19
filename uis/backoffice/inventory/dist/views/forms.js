@@ -1,10 +1,11 @@
 import { h, UI } from '../dom.js';
 /** Label + control + inline error, wired with aria-describedby for screen readers. */
-export function field(id, label, control, hint) {
+export function field(id, label, control, hint, required = true) {
     const error = h('p', { id: `${id}-error`, className: UI.fieldError, dataset: { fieldError: id } });
     control.id = id;
     control.setAttribute('aria-describedby', [hint?.id, error.id].filter(Boolean).join(' '));
-    const wrapper = h('div', {}, h('label', { for: id, className: UI.label }, label, ' ', h('span', { 'aria-hidden': 'true' }, '*')), control, hint ?? null, error);
+    const marker = required ? h('span', { 'aria-hidden': 'true' }, '*') : h('span', { className: 'font-normal text-slate-500' }, '(opcional)');
+    const wrapper = h('div', {}, h('label', { for: id, className: UI.label }, label, ' ', marker), control, hint ?? null, error);
     return { wrapper, control, error };
 }
 export function setFieldError(f, message) {

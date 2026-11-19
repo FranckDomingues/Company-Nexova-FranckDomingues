@@ -1,4 +1,7 @@
+import { NexovaAuth } from '../../suppliers/src/auth-session';
 import { createApp } from '../src/app';
+import { createAccountApi } from '../src/lib/account';
+import type { ApiClientOptions } from '../src/lib/http';
 import { createInventoryApi, type Asset, type InventoryOrder } from '../src/lib/inventory';
 import type { AuthSession, NexovaAuthModule } from '../src/lib/session';
 
@@ -20,11 +23,18 @@ export interface Call { url: string; method: string; headers: Record<string, str
 type Reply = { status?: number; body?: unknown; raw?: string } | 'network-error';
 type Handler = (call: Call) => Reply | Promise<Reply>;
 
+/** JSON bodies are parsed; OAuth2 form bodies (POST /auth/login) become plain objects. */
+function parseBody(body: BodyInit | null | undefined): unknown {
+  if (!body) return undefined;
+  const text = String(body);
+  try { return JSON.parse(text); } catch { return Object.fromEntries(new URLSearchParams(text)); }
+}
+
 /** fetch mock that records calls; real Response objects so the client parses real bodies. */
 export function mockFetch(handler: Handler) {
   const calls: Call[] = [];
   const fetcher = jest.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    const call: Call = { url: String(input), method: init.method ?? 'GET', headers: (init.headers ?? {}) as Record<string, string>, body: init.body ? JSON.parse(String(init.body)) : undefined };
+    const call: Call = { url: String(input), method: init.method ?? 'GET', headers: (init.headers ?? {}) as Record<string, string>, body: parseBody(init.body) };
     calls.push(call);
     const result = await handler(call);
     if (result === 'network-error') throw new TypeError('Failed to fetch');
@@ -47,21 +57,29 @@ export function defaultBackend(overrides: Partial<Record<string, Handler>> = {})
   };
 }
 
-type FakeSession = AuthSession & { loggedIn: boolean; login: jest.Mock; logout: jest.Mock };
+type FakeSession = AuthSession & { loggedIn: boolean; login: jest.Mock; logout: jest.Mock; verify: jest.Mock };
 
+/** In-memory stand-in used by the Hito 5 view tests (already verified when authenticated). */
 export function fakeSession(authenticated = true): FakeSession {
   const session: FakeSession = {
     loggedIn: authenticated,
-    get account() { return session.loggedIn ? { email: 'ops@nexova.example', role: 'user' } : null; },
+    get account() { return session.loggedIn ? { email: 'ops@nexova.example', role: 'user', profile: {} } : null; },
     getAuthorizationHeader: () => (session.loggedIn ? `Bearer ${TOKEN}` : null),
+    isVerified: () => session.loggedIn,
+    verify: jest.fn(async () => session.account),
     login: jest.fn(async (): Promise<unknown> => { session.loggedIn = true; return session.account; }),
+    register: jest.fn(async (): Promise<unknown> => { session.loggedIn = true; return session.account; }),
     logout: jest.fn((): void => { session.loggedIn = false; }),
   };
   return session;
 }
 
+/** Real NexovaAuth validators; only session creation is replaced. */
 export const fakeAuth: NexovaAuthModule = {
-  validateLoginInput: (u, p) => (!u ? 'Introduce tu correo electrónico.' : !p ? 'Introduce tu contraseña.' : null),
+  TOKEN_STORAGE_KEY: NexovaAuth.TOKEN_STORAGE_KEY,
+  validateLoginInput: NexovaAuth.validateLoginInput,
+  validateRegistrationInput: NexovaAuth.validateRegistrationInput,
+  validateProfileFields: NexovaAuth.validateProfileFields,
   createAuthSession: () => fakeSession(false),
 };
 
@@ -72,22 +90,32 @@ export async function flush(times = 6): Promise<void> {
 const mounted: { stop(): void }[] = [];
 afterEach(() => { while (mounted.length) mounted.pop()!.stop(); });
 
-export async function mountApp(path: string, options: { session?: AuthSession; handler?: Handler } = {}) {
+export interface MountOptions {
+  session?: AuthSession;
+  /** Build the session from the shared fetch mock (e.g. the real NexovaAuth module). */
+  makeSession?: (fetcher: typeof fetch) => AuthSession;
+  handler?: Handler;
+  /** Skip the initial flush (to observe the UI before the session check resolves). */
+  noFlush?: boolean;
+}
+
+export async function mountApp(path: string, options: MountOptions = {}) {
   document.body.innerHTML = `
     <nav id="inventory-nav" hidden><a data-link href="/backoffice/inventory/products">Activos</a><a data-link href="/backoffice/inventory/orders">Historial</a></nav>
     <div id="account-tools" hidden><span data-account-email></span><button data-logout type="button">Cerrar sesión</button></div>
     <main id="app"></main>`;
   window.history.replaceState({}, '', path);
-  const session = options.session ?? fakeSession(true);
   const { fetcher, calls } = mockFetch(options.handler ?? defaultBackend());
+  const session = options.session ?? options.makeSession?.(fetcher) ?? fakeSession(true);
   let app: ReturnType<typeof createApp> | null = null;
-  const api = createInventoryApi({ apiBase: 'http://api.test', fetcher, getAuthorizationHeader: () => session.getAuthorizationHeader(), onUnauthorized: () => { void app?.redirectToLogin('session'); } });
+  const clientOptions: ApiClientOptions = { apiBase: 'http://api.test', fetcher, getAuthorizationHeader: () => session.getAuthorizationHeader(), onUnauthorized: rejected => { void app?.handleUnauthorized(rejected); } };
   const root = document.getElementById('app')!;
-  app = createApp({ root, win: window, session, auth: fakeAuth, api, nav: document.getElementById('inventory-nav'), account: document.getElementById('account-tools') });
+  const assign = jest.fn();
+  app = createApp({ root, win: window, session, auth: fakeAuth, api: createInventoryApi(clientOptions), accountApi: createAccountApi(clientOptions), nav: document.getElementById('inventory-nav'), account: document.getElementById('account-tools'), assign });
   mounted.push(app);
-  await app.start();
-  await flush();
-  return { app, root, calls, session };
+  const started = app.start();
+  if (!options.noFlush) { await started; await flush(); }
+  return { app, root, calls, session, assign, started };
 }
 
 export function $(selector: string): HTMLElement {

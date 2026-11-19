@@ -4,11 +4,12 @@ import type { Asset } from '../lib/inventory.js';
 export interface Field<T extends HTMLElement> { wrapper: HTMLElement; control: T; error: HTMLElement }
 
 /** Label + control + inline error, wired with aria-describedby for screen readers. */
-export function field<T extends HTMLInputElement | HTMLSelectElement>(id: string, label: string, control: T, hint?: HTMLElement): Field<T> {
+export function field<T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(id: string, label: string, control: T, hint?: HTMLElement | null, required = true): Field<T> {
   const error = h('p', { id: `${id}-error`, className: UI.fieldError, dataset: { fieldError: id } });
   control.id = id;
   control.setAttribute('aria-describedby', [hint?.id, error.id].filter(Boolean).join(' '));
-  const wrapper = h('div', {}, h('label', { for: id, className: UI.label }, label, ' ', h('span', { 'aria-hidden': 'true' }, '*')), control, hint ?? null, error);
+  const marker = required ? h('span', { 'aria-hidden': 'true' }, '*') : h('span', { className: 'font-normal text-slate-500' }, '(opcional)');
+  const wrapper = h('div', {}, h('label', { for: id, className: UI.label }, label, ' ', marker), control, hint ?? null, error);
   return { wrapper, control, error };
 }
 

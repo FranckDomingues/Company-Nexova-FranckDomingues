@@ -6,6 +6,7 @@
  */
 import { NexovaAuth } from '../../suppliers/src/auth-session';
 import { createApp } from '../src/app';
+import { createAccountApi, type AccountApi } from '../src/lib/account';
 import { createInventoryApi, type InventoryApi } from '../src/lib/inventory';
 import type { NexovaAuthModule } from '../src/lib/session';
 import { $, flush, setValue, submit } from './helpers';
@@ -28,12 +29,15 @@ async function waitFor(check: () => boolean, ms = 8000): Promise<void> {
 }
 
 live('live API integration (FastAPI + PostgreSQL)', () => {
-  const session = realAuth.createAuthSession({ apiBase: API! });
+  // describe.skip still evaluates this body, so never dereference a missing URL here.
+  const session = realAuth.createAuthSession({ apiBase: API ?? 'http://127.0.0.1:9' });
   let api: InventoryApi;
+  let accountApi: AccountApi;
 
   beforeAll(async () => {
     await session.login({ username: EMAIL, password: PASSWORD });
     api = createInventoryApi({ apiBase: API!, getAuthorizationHeader: () => session.getAuthorizationHeader() });
+    accountApi = createAccountApi({ apiBase: API!, getAuthorizationHeader: () => session.getAuthorizationHeader() });
   });
 
   it('authenticates through the existing auth module and obtains a Bearer token', () => {
@@ -65,7 +69,7 @@ live('live API integration (FastAPI + PostgreSQL)', () => {
     document.body.innerHTML = '<main id="app"></main>';
     const target = (await api.listProducts()).find(a => a.sku === 'NXV-IT-001')!;
     window.history.replaceState({}, '', `/backoffice/inventory/orders/outbound?asset_id=${target.id}`);
-    const app = createApp({ root: $('#app'), win: window, session, auth: realAuth, api });
+    const app = createApp({ root: $('#app'), win: window, session, auth: realAuth, api, accountApi });
     await app.start();
     await waitFor(() => document.querySelector('[data-available-stock]') !== null);
     expect($('[data-available-stock]').textContent).toBe(String(target.current_stock));
@@ -90,7 +94,7 @@ live('live API integration (FastAPI + PostgreSQL)', () => {
   it('UI: history lists real orders with names, types and the authenticated user_uuid', async () => {
     document.body.innerHTML = '<main id="app"></main>';
     window.history.replaceState({}, '', '/backoffice/inventory/orders');
-    const app = createApp({ root: $('#app'), win: window, session, auth: realAuth, api });
+    const app = createApp({ root: $('#app'), win: window, session, auth: realAuth, api, accountApi });
     await app.start();
     await waitFor(() => document.querySelectorAll('#order-rows tr[data-kind]').length > 0);
     await flush();
@@ -102,5 +106,70 @@ live('live API integration (FastAPI + PostgreSQL)', () => {
     expect($('#order-rows [data-asset-name]').textContent).not.toMatch(/^Activo #/);
     expect($('#order-rows [data-user-uuid]').textContent).toMatch(/^[0-9a-f-]{36}$/);
     app.stop();
+  });
+});
+
+const b64url = (value: string) => btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+/** Well-formed, unexpired JWT shape with a signature the API cannot verify. */
+const forgedToken = () => `${b64url('{"alg":"HS256","typ":"JWT"}')}.${b64url(JSON.stringify({ sub: '1', exp: Math.floor(Date.now() / 1000) + 600 }))}.forged-signature`;
+
+live('AUTH-02 live auth flows (FastAPI, real JWTs, no mocks)', () => {
+  const unique = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const email = `auth02-${unique}@nexova.example`;
+  // Throwaway credential for a user that exists only in the disposable E2E database.
+  const password = `pw-${unique}-${Math.random().toString(36).slice(2)}`;
+  beforeEach(() => window.localStorage.clear());
+
+  it('registers via POST /users, logs in via POST /auth/login and persists the real JWT in localStorage', async () => {
+    const session = realAuth.createAuthSession({ apiBase: API! });
+    const account = await session.register({ email, password, name: 'Ana Auth02', phone: '+34 600 000 000', address: 'Calle Mayor 1, Valencia' }) as { email: string; role: string; profile: Record<string, unknown> };
+    expect(account).toMatchObject({ email, role: 'user', profile: { name: 'Ana Auth02', phone: '+34 600 000 000', address: 'Calle Mayor 1, Valencia' } });
+    const stored = window.localStorage.getItem(realAuth.TOKEN_STORAGE_KEY);
+    expect(stored).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
+    expect(session.getAuthorizationHeader()).toBe(`Bearer ${stored}`);
+  });
+
+  it('a fresh session restores the stored token and validates it with GET /auth/me', async () => {
+    const first = realAuth.createAuthSession({ apiBase: API! });
+    await first.login({ username: email, password });
+    const reloaded = realAuth.createAuthSession({ apiBase: API! });
+    expect(reloaded.isVerified()).toBe(false);
+    expect(await reloaded.verify()).toMatchObject({ email });
+    expect(reloaded.isVerified()).toBe(true);
+  });
+
+  it('wrong password is a clear error, stores nothing', async () => {
+    const session = realAuth.createAuthSession({ apiBase: API! });
+    await expect(session.login({ username: email, password: `${password}-wrong` })).rejects.toMatchObject({ status: 401, message: 'Correo electrónico o contraseña incorrectos.' });
+    expect(window.localStorage.getItem(realAuth.TOKEN_STORAGE_KEY)).toBeNull();
+  });
+
+  it('duplicate registration (409) and short password (client + API 422) are field-level errors', async () => {
+    const session = realAuth.createAuthSession({ apiBase: API! });
+    await expect(session.register({ email, password })).rejects.toMatchObject({ status: 409, fieldErrors: { email: expect.any(String) } });
+    const response = await fetch(`${API}/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: `x-${email}`, password: 'short' }) });
+    expect(response.status).toBe(422);
+  });
+
+  it('PUT /profiles/me with the Bearer token updates the profile; GET /auth/me reflects it', async () => {
+    const session = realAuth.createAuthSession({ apiBase: API! });
+    await session.login({ username: email, password });
+    const client = createAccountApi({ apiBase: API!, getAuthorizationHeader: () => session.getAuthorizationHeader() });
+    const saved = await client.updateProfile({ name: 'Ana Actualizada', phone: null, address: 'Av. del Puerto 2' });
+    expect(saved).toMatchObject({ name: 'Ana Actualizada', phone: null, address: 'Av. del Puerto 2' });
+    expect(await session.verify({ force: true })).toMatchObject({ profile: { name: 'Ana Actualizada', phone: null, address: 'Av. del Puerto 2' } });
+  });
+
+  it('a forged/invalid token is rejected by the API (401) and removed from storage', async () => {
+    window.localStorage.setItem(realAuth.TOKEN_STORAGE_KEY, forgedToken());
+    const session = realAuth.createAuthSession({ apiBase: API! });
+    expect(session.getAuthorizationHeader()).not.toBeNull();
+    expect(await session.verify()).toBeNull();
+    expect(window.localStorage.getItem(realAuth.TOKEN_STORAGE_KEY)).toBeNull();
+    const unauthorized = jest.fn();
+    window.localStorage.setItem(realAuth.TOKEN_STORAGE_KEY, forgedToken());
+    const client = createAccountApi({ apiBase: API!, getAuthorizationHeader: () => session.getAuthorizationHeader(), onUnauthorized: unauthorized });
+    await expect(client.updateProfile({ name: 'x', phone: null, address: null })).rejects.toMatchObject({ status: 401 });
+    expect(unauthorized).toHaveBeenCalledTimes(1);
   });
 });

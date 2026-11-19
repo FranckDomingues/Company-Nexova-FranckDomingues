@@ -4,11 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#102a43" />
-  <title>Inventario · Nexova Backoffice</title>
+  <title>Nexova Backoffice</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Optional: window.NEXOVA_API_URL = 'http://127.0.0.1:8000' (same convention as the supplier directory). -->
   <script src="/backoffice/config.js"></script>
-  <!-- Existing NexovaAuth module (in-memory JWT session). -->
+  <!-- NexovaAuth: the single auth module (JWT in localStorage, verified with GET /auth/me). -->
   <script src="/backoffice/suppliers/dist/auth-session.js" defer></script>
   <script type="module" src="/backoffice/inventory/dist/main.js"></script>
 </head>
@@ -24,12 +24,14 @@
           <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/inventory/orders/inbound">Entradas</a></li>
           <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/inventory/orders/outbound">Salidas</a></li>
           <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/inventory/orders">Historial</a></li>
+          <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/account/profile">Mi perfil</a></li>
         </ul>
       </nav>
-      <div id="account-tools" hidden class="flex items-center gap-3 text-sm">
+      <!-- `hidden` must not share an element with a Tailwind display class (.flex would override it). -->
+      <div id="account-tools" hidden><div class="flex items-center gap-3 text-sm">
         <span data-account-email class="text-slate-600"></span>
         <button data-logout type="button" class="rounded-md border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">Cerrar sesión</button>
-      </div>
+      </div></div>
     </div>
   </header>
   <main id="app" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" tabindex="-1">

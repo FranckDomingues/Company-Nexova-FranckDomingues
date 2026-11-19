@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 /**
- * Hito 5 end-to-end verification against a REAL backend, fully isolated from any shared database:
+ * Hito 5 + AUTH-02 end-to-end verification against a REAL backend, fully isolated from any shared database:
  *   1. disposable PostgreSQL 16 container (TLS on, random port/password, removed afterwards)
  *   2. FastAPI (services/api) with a temporary TinyDB and random JWT secret
  *   3. backoffice static server (serve.cjs) on its own port (CORS allowlisted)
  *   4. data created only through the public API (POST /users, /auth/login, /inventory/*)
  *   5. Jest live integration suite (tests/live.integration.test.ts)
  *   6. headless Chrome smoke test of the four routes (CDP), with screenshots
+ *   7. AUTH-02 browser flows: reload persistence, profile read/update, supplier directory 403/manager,
+ *      invalid token, server-side 401 during use, logout, wrong password, registration, public website
  *
  * Requirements: Docker, Google Chrome, services/api/.venv (uv sync), npm install.
  * Usage: npm run e2e   (env: CHROME_PATH, E2E_EVIDENCE_DIR, E2E_KEEP_OPEN=1)
@@ -14,6 +16,7 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -216,14 +219,145 @@ async function main() {
     `${ui.rows} rows, ${ui.inbound} entradas, uuid ${ui.uuid.slice(0, 8)}…, profile ${me.email === email ? 'ok' : 'mismatch'}`);
   await chrome.screenshot(join(EVIDENCE, '05-history.png'));
 
+  // ---------------------------------------------------------------- AUTH-02 (real API, real JWTs) ----
+  const KEY = 'nexova.auth.token';
+  const hasToken = () => chrome.evaluate(`localStorage.getItem(${JSON.stringify(KEY)}) !== null`);
+  const tinyDbPath = join(work, 'tinydb.json');
+  /** Edits the disposable TinyDB user record (role / is_active), as the AUTH-01 guide does for manager tests. */
+  const setUser = (userEmail, changes) => {
+    const db = JSON.parse(readFileSync(tinyDbPath, 'utf8'));
+    const record = Object.values(db.users).find(u => u.email === userEmail);
+    Object.assign(record, changes);
+    writeFileSync(tinyDbPath, JSON.stringify(db));
+  };
+
+  // AUTH02-07: the token survives a full reload (localStorage) and is re-validated with GET /auth/me.
   await chrome.goto(`${webOrigin}/backoffice/inventory/products`);
+  await chrome.waitFor('document.querySelectorAll("#product-rows tr[data-asset-id]").length > 0');
+  check('AUTH-02 Browser: full reload keeps the session (token in localStorage under nexova.auth.token, re-verified)',
+    (await path()) === '/backoffice/inventory/products' && await hasToken() &&
+    await chrome.evaluate(`Object.keys(localStorage).join() === ${JSON.stringify(KEY)} && sessionStorage.length === 0 && document.cookie === ""`));
+  check('AUTH-02 Browser: shell chrome hidden on login is visible when authenticated',
+    await chrome.evaluate('getComputedStyle(document.querySelector("#account-tools")).display !== "none" && document.querySelector("[data-account-email]").textContent.length > 0'));
+
+  // AUTH02-03: profile read (GET /auth/me) and update (PUT /profiles/me).
+  await chrome.evaluate('document.querySelector(\'#inventory-nav a[href="/backoffice/account/profile"]\').click()');
+  await chrome.waitFor('!!document.querySelector("#profile-form")');
+  const shownEmail = await chrome.evaluate('document.querySelector(\'[data-profile-value="email"]\').textContent');
+  check('AUTH-02 Browser: /backoffice/account/profile shows the real account from GET /auth/me', shownEmail === email, shownEmail);
+  await chrome.evaluate(`(() => { const f = document.querySelector('#profile-form');
+    f.name.value = 'Operaciones E2E'; f.phone.value = '+34 600 000 001'; f.address.value = 'Calle de la Paz 5, Valencia'; f.requestSubmit(); })()`);
+  await chrome.waitFor('document.querySelector("#profile-status").textContent.includes("Perfil actualizado")');
+  const meAfter = await json('GET', `${apiUrl}/auth/me`, { token });
+  check('AUTH-02 Browser: profile update persisted by PUT /profiles/me (verified via API)',
+    meAfter.profile.name === 'Operaciones E2E' && meAfter.profile.phone === '+34 600 000 001' && meAfter.profile.address === 'Calle de la Paz 5, Valencia');
+  await chrome.screenshot(join(EVIDENCE, '06-profile.png'));
+
+  // Supplier directory (second private page): role "user" → real 403, session kept.
+  await chrome.goto(`${webOrigin}/backoffice/`);
+  await chrome.waitFor('!document.querySelector("#main").hidden && document.querySelector("#page-message").textContent.length > 0');
+  check('AUTH-02 Browser: supplier directory with role "user" gets a real 403 → permissions message, session kept',
+    (await chrome.evaluate('document.querySelector("#page-message").textContent')).includes('no tiene permisos') && await hasToken() && (await path()) === '/backoffice/');
+  // Promote to manager in the disposable TinyDB, create a supplier via API, reload: Bearer accepted.
+  setUser(email, { role: 'manager' });
+  await json('POST', `${apiUrl}/suppliers`, { token, body: { name: 'LinkedIn Talent', country: 'Spain', categories: ['job_boards'], monthly_rate: 900, currency: 'EUR', status: 'active' } });
+  await chrome.goto(`${webOrigin}/backoffice/`);
+  await chrome.waitFor('document.querySelector("#supplier-rows").textContent.includes("LinkedIn Talent")');
+  check('AUTH-02 Browser: supplier directory with a manager token lists suppliers (Bearer on /suppliers)', true);
+  await chrome.screenshot(join(EVIDENCE, '07-suppliers-manager.png'));
+  setUser(email, { role: 'user' });
+
+  // AUTH02-10: the API starts rejecting the token during use (account deactivated) → 401 → session cleared.
+  await chrome.goto(`${webOrigin}/backoffice/inventory/products`);
+  await chrome.waitFor('document.querySelectorAll("#product-rows tr[data-asset-id]").length > 0');
+  setUser(email, { is_active: false });
+  await chrome.evaluate('document.querySelector(\'#inventory-nav a[href="/backoffice/account/profile"]\').click()');
+  await chrome.waitFor('location.pathname === "/backoffice/login"');
+  check('AUTH-02 Browser: real 401 during use clears the token and redirects to /login?reason=session',
+    !(await hasToken()) && new URLSearchParams(await chrome.evaluate('location.search')).get('reason') === 'session' &&
+    await chrome.evaluate('!!document.querySelector(\'[data-state="session-expired"]\')'));
+  setUser(email, { is_active: true });
+
+  // AUTH02-05: a forged-but-unexpired token is rejected by the API and removed (claims are never trusted).
+  await chrome.evaluate(`localStorage.setItem(${JSON.stringify(KEY)}, [btoa('{"alg":"HS256"}'), btoa(JSON.stringify({ sub: '1', exp: Math.floor(Date.now() / 1000) + 600 })).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_'), 'forged'].join('.'))`);
+  await chrome.goto(`${webOrigin}/backoffice/inventory/orders`);
+  await chrome.waitFor('location.pathname === "/backoffice/login" && !!document.querySelector("#login-form")');
+  check('AUTH-02 Browser: forged token → GET /auth/me 401 → removed, redirect to login, no private content',
+    !(await hasToken()) && (await path()).includes('reason=session') && !(await chrome.evaluate('!!document.querySelector("#order-rows")')));
+
+  // AUTH02-01 / 14: wrong password → clear error, no token, no redirect loop.
+  const loginUrl = `/backoffice/login?next=${encodeURIComponent('/backoffice/account/profile')}`;
+  await chrome.goto(`${webOrigin}${loginUrl}`);
   await chrome.waitFor('!!document.querySelector("#login-form")');
-  check('Browser: full reload drops the in-memory session (no token persisted in storage)',
-    await chrome.evaluate('localStorage.length === 0 && sessionStorage.length === 0 && document.cookie === ""'));
+  check('AUTH-02 Browser: account tools are not displayed on the login page',
+    await chrome.evaluate('getComputedStyle(document.querySelector("#account-tools")).display === "none" && getComputedStyle(document.querySelector("#inventory-nav")).display === "none"'));
+  await chrome.evaluate(`(() => { const f = document.querySelector('#login-form'); f.username.value = ${JSON.stringify(email)}; f.password.value = 'definitely-wrong-password'; f.requestSubmit(); })()`);
+  await chrome.waitFor('document.querySelector("#login-error").textContent.length > 0');
+  await sleep(500);
+  check('AUTH-02 Browser: wrong password → clear error, URL unchanged, no token stored',
+    (await chrome.evaluate('document.querySelector("#login-error").textContent')) === 'Correo electrónico o contraseña incorrectos.' && (await path()) === loginUrl && !(await hasToken()));
+  await chrome.screenshot(join(EVIDENCE, '08-login-error.png'));
+  await chrome.evaluate(`(() => { const f = document.querySelector('#login-form'); f.username.value = ${JSON.stringify(email)}; f.password.value = ${JSON.stringify(password)}; f.requestSubmit(); })()`);
+  await chrome.waitFor('location.pathname === "/backoffice/account/profile" && !!document.querySelector("#profile-form")');
+  check('AUTH-02 Browser: correct password → token stored → redirected to the requested private view', await hasToken());
+
+  // AUTH02-09: logout clears storage and blocks private views.
+  await chrome.evaluate('document.querySelector("[data-logout]").click()');
+  await chrome.waitFor('location.pathname === "/backoffice/login"');
+  const loggedOut = !(await hasToken()) && (await path()) === '/backoffice/login?reason=logout';
+  await chrome.goto(`${webOrigin}/backoffice/account/profile`);
+  await chrome.waitFor('!!document.querySelector("#login-form")');
+  check('AUTH-02 Browser: logout removes the token; private view afterwards redirects to login', loggedOut && (await path()).startsWith('/backoffice/login?next='));
+
+  // AUTH02-02: registration through the UI (/register alias), validation errors, then automatic login.
+  await chrome.goto(`${webOrigin}/register`);
+  await chrome.waitFor('!!document.querySelector("#register-form")');
+  check('AUTH-02 Browser: /register alias serves the registration view', (await path()) === '/backoffice/register');
+  await chrome.evaluate(`(() => { const f = document.querySelector('#register-form'); f.email.value = ${JSON.stringify(email)}; f.password.value = 'short'; f.requestSubmit(); })()`);
+  const clientError = await chrome.evaluate('document.querySelector("#reg-password-error").textContent');
+  await chrome.evaluate(`(() => { const f = document.querySelector('#register-form'); f.password.value = 'long-enough-password'; f.requestSubmit(); })()`);
+  await chrome.waitFor('document.querySelector("#reg-email-error").textContent.length > 0');
+  check('AUTH-02 Browser: registration field errors (client 8-char rule, real API 409 duplicate email)',
+    clientError.includes('entre 8 y 128') && (await chrome.evaluate('document.querySelector("#reg-email-error").textContent')).includes('ya está registrado'), clientError);
+  await chrome.screenshot(join(EVIDENCE, '09-register-errors.png'));
+  const newEmail = `alta-${randomBytes(4).toString('hex')}@nexova.example`;
+  const newPassword = randomBytes(12).toString('base64url');
+  await chrome.evaluate(`(() => { const f = document.querySelector('#register-form'); f.email.value = ${JSON.stringify(newEmail)}; f.password.value = ${JSON.stringify(newPassword)};
+    f.name.value = 'Nueva Persona'; f.phone.value = '+54 11 4000 0000'; f.address.value = 'Av. Santa Fe 1, Buenos Aires'; f.requestSubmit(); })()`);
+  await chrome.waitFor('location.pathname === "/backoffice/inventory/products" && document.querySelectorAll("#product-rows tr[data-asset-id]").length > 0');
+  const newToken = (await json('POST', `${apiUrl}/auth/login`, { form: { username: newEmail, password: newPassword } })).access_token;
+  const created = await json('GET', `${apiUrl}/auth/me`, { token: newToken });
+  check('AUTH-02 Browser: registration → POST /users → POST /auth/login → token stored → main view',
+    await hasToken() && created.email === newEmail && created.role === 'user' && created.profile.name === 'Nueva Persona' &&
+    (await chrome.evaluate('document.querySelector("[data-account-email]").textContent')) === newEmail);
+  await chrome.screenshot(join(EVIDENCE, '10-registered-main-view.png'));
+
+  // AUTH02-06: the Hito 1 public website, served on its own origin, opens with no token and no redirect.
+  const sitePort = await freePort();
+  const siteDir = join(REPO, 'uis/website');
+  const site = createHttpServer((req, res) => {
+    const name = (new URL(req.url, 'http://x').pathname.replace(/^\/+/, '') || 'index.html');
+    if (!/^[\w.-]+$/.test(name)) { res.writeHead(404); return res.end(); }
+    try { const body = readFileSync(join(siteDir, name)); res.writeHead(200, { 'Content-Type': name.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8' }); res.end(body); }
+    catch { res.writeHead(404); res.end(); }
+  }).listen(sitePort, '127.0.0.1');
+  cleanups.push(() => site.close());
+  for (const page of ['index.html', 'application.html']) {
+    await chrome.goto(`http://127.0.0.1:${sitePort}/${page}`);
+    await chrome.waitFor('document.readyState === "complete"');
+    await sleep(500);
+    const state = await chrome.evaluate('({ path: location.pathname, login: !!document.querySelector("#login-form"), title: document.title, h1: !!document.querySelector("h1"), storage: localStorage.length })');
+    check(`AUTH-02 Browser: public website /${page} loads without token, guard or redirect`,
+      state.path === `/${page}` && !state.login && state.h1 && state.storage === 0, state.title);
+  }
+  await chrome.screenshot(join(EVIDENCE, '11-public-website.png'));
+
   const errors = chrome.exceptions.filter(e => !/cdn\.tailwindcss\.com should not be used in production/.test(e));
   check('Browser: no uncaught JavaScript errors', errors.length === 0, errors.join(' | '));
-  // Only the deliberate insufficient-stock 400 and the absent favicon may fail at network level.
-  const unexpected = chrome.networkErrors.filter(e => !/status of 400 .*\/inventory\/orders\/outbound/.test(e) && !/favicon\.ico/.test(e));
+  // Only deliberate failures may appear: insufficient stock (400), the AUTH-02 negative paths
+  // (401 wrong password / rejected token, 403 supplier role check, 409 duplicate email) and the favicon.
+  const expectedFailure = [/status of 400 .*\/inventory\/orders\/outbound/, /status of 401 .*\/auth\/(login|me)/, /status of 403 .*\/suppliers/, /status of 409 .*\/users/, /favicon\.ico/];
+  const unexpected = chrome.networkErrors.filter(e => !expectedFailure.some(re => re.test(e)));
   check('Browser: no unexpected failed network requests', unexpected.length === 0, chrome.networkErrors.join(' | '));
 }
 

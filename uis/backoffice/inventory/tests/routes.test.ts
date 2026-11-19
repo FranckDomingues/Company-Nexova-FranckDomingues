@@ -6,8 +6,8 @@ import { $, fakeSession, flush, mountApp, setValue, submit } from './helpers';
 const ROUTES = [PATHS.products, PATHS.inbound, PATHS.outbound, PATHS.orders];
 
 describe('route protection', () => {
-  it('protects exactly the four inventory routes', () => {
-    expect(Object.keys(PROTECTED_ROUTES).sort()).toEqual([...ROUTES].sort());
+  it('protects exactly the four inventory routes plus the AUTH-02 profile route', () => {
+    expect(Object.keys(PROTECTED_ROUTES).sort()).toEqual([...ROUTES, PATHS.profile].sort());
   });
 
   it.each(ROUTES)('redirects unauthenticated users from %s to login without fetching data', async route => {
