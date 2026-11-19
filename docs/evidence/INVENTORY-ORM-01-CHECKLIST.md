@@ -1,6 +1,6 @@
 # INVENTORY-ORM-01 — Official milestone traceability
 
-Authority: 4Geeks Academy backend milestone, syllabus revision `fd2da034894ba93ba738559280ccde074ab1d953`; attributed source URLs and snapshots are in `docs/evidence/sources/`. The source contains exactly 29 checkboxes: 17 implementation checkboxes and 12 evaluation checkboxes. Rows below map one-to-one in source order and retain the official Spanish requirement text. The six routes listed inside implementation checkbox 12 are itemized after the matrix as subchecks only; they do not increase the official checkbox count. Status reflects only executed evidence: offline checks are labeled, and live PostgreSQL claims are limited to the five integration tests that actually passed.
+Authority: 4Geeks Academy backend milestone, syllabus revision `fd2da034894ba93ba738559280ccde074ab1d953`; attributed source URLs and snapshots are in `docs/evidence/sources/`. The source contains exactly 29 checkboxes: 17 implementation checkboxes and 12 evaluation checkboxes. Rows below map one-to-one in source order and retain the official Spanish requirement text. The six routes listed inside implementation checkbox 12 are itemized after the matrix as subchecks only; they do not increase the official checkbox count. Status reflects executed evidence. The final run on 2026-11-18 passed the full suite (60 passed, 0 failed, 0 skipped), including all five real PostgreSQL integration tests.
 
 | ID | Section | Exact official checkbox requirement (Spanish source) | Implementation location | Test / evidence | Status |
 |---|---|---|---|---|---|
@@ -32,7 +32,7 @@ Authority: 4Geeks Academy backend milestone, syllabus revision `fd2da034894ba93b
 | T26 | Evaluation | La sesión SQLModel se inyecta por petición mediante `Depends()` — no existe ninguna sesión global en el código. | `sql_database.py:get_db`, inventory routes | Code and dependency tests | PASS |
 | T27 | Evaluation | Todos los parámetros de conexión están en `.env`; `.env` aparece en `.gitignore`. | `.gitignore`, `services/api/.env.example`, `sql_database.py` | Local ignored `.env` used for successful live tests; ignore status verified | PASS |
 | T28 | Evaluation | Los nombres de entidades y campos coinciden con la especificación del BRIEFING.md del estudiante. | `inventory_models.py`, `inventory_schemas.py` | Compared with pinned Nexova briefing snapshot; local model/API tests | PASS |
-| T29 | Evaluation | Los datos semilla de BRIEFING.md están presentes; `GET /inventory/products` refleja el stock neto de esas semillas. | `inventory_seed.py`, product routes | Live six-seed counts, GET current_stock and idempotency verified (NXV-IT-001=12; NXV-PER-001=17); demo attribution caveat noted under T17 | PASS |
+| T29 | Evaluation | Los datos semilla de BRIEFING.md están presentes; `GET /inventory/products` refleja el stock neto de esas semillas. | `inventory_seed.py`, product routes | Live six-seed counts, GET current_stock, idempotency and persistent active-user attribution verified (NXV-IT-001=12; NXV-PER-001=17) | PASS |
 
 ## Six endpoint subchecks (part of T12, not extra official checklist items)
 
@@ -47,16 +47,6 @@ Authority: 4Geeks Academy backend milestone, syllabus revision `fd2da034894ba93b
 
 ## Summary
 
-**Evidence-based official acceptance accounting: 29 tasks = 29 PASS.** T17 was resolved in INVENTORY-ORM-07 by an authorized, backed-up replacement of the seven canonical orders, now attributed to a persistent active TinyDB identity. The 5 live PostgreSQL tests have not been rerun since that change: the live-test opt-in is disabled in the local `.env` (latest run 55 passed / 5 skipped / 0 failed). Superseded history: **Evidence-based official acceptance accounting: 29 tasks = 28 PASS + 1 BLOCKED.** T17 remains BLOCKED because prior live evidence found canonical seed order UUIDs unmatched to active users in the configured local TinyDB; attribution was not changed. T01/T02/T07/T15/T16/T18/T20/T23/T24/T27 have live PostgreSQL/configuration evidence from the recorded full run. T29 is PASS for the previously verified seed counts, net stock and GET output, with the attribution caveat under T17. T03-T14 and T19/T21/T22/T25/T26/T28 are supported by implementation and offline tests. Recorded full run: 55 passed, 0 skipped, 0 failed; live PostgreSQL subset: 5 passed.
+**Final evidence-based official acceptance: 29/29 PASS.** The authorized T17 repair replaced only the seven canonical orders after backup, preserving unrelated records; all canonical orders now belong to a persistent active TinyDB user. The updated seed implementation prevents temporary test identities from becoming owners of canonical seeds.
 
-### T17 follow-up investigation (read-only, 2026-11-14)
-
-The configured application and seed code resolve `get_users_table()` through the same `SUPPLIER_DB_PATH`; in this checkout both resolve to `services/api/data/suppliers.json`. This file contains zero TinyDB users and zero active users with UUIDs. Repository search found no other TinyDB database or backup candidate. The current local PostgreSQL connection exposed no inventory tables, so the earlier canonical order UUIDs could not be re-compared in this follow-up. No files, identities, database rows, or configuration were changed. The paths are consistent; the origin of the historical UUID remains unverified. T17 remains BLOCKED pending operator confirmation of the intended authorized database and either recovery of the legitimate TinyDB identity from an authorized backup or explicit authorization to replace only disposable canonical seed rows.
-
-### T17 recovery investigation (INVENTORY-ORM-06, 2026-11-18)
-
-No TinyDB file in the Nexova repository, its worktrees, Git history, or retained pytest temp directories contains users; the configured file has never had a `users` table. All seven canonical orders were inserted in one run (2026-11-14 00:27:06 −05:00), shortly after the live seed test was added. That test registers a throwaway user in a pytest `tmp_path` TinyDB and seeds live PostgreSQL with it, so the historical UUID most likely belongs to an ephemeral test identity that was never persisted. It is irrecoverable. T17 remains BLOCKED pending the owner's decision. See `INVENTORY-ORM-06-TINYDB-RECOVERY.md`.
-
-### T17 resolution (INVENTORY-ORM-07, 2026-11-18)
-
-PASS. The owner authorized the replacement. The seven orders were backed up, then replaced 7/7 in one transaction; unrelated rows were verified unchanged. The canonical seed now refuses temporary identity stores. See `INVENTORY-ORM-07-FINAL-ACCEPTANCE.md`.
+Final full run (2026-11-18): `cd services/api && uv run --extra dev pytest -q -rs` — **60 passed, 0 failed, 0 skipped**. This includes the five real PostgreSQL integration tests: schema/constraints, API persistence, real TinyDB JWT attribution, independent-session concurrency, and guarded seed counts/net stock/idempotency. The six endpoint subchecks above were exercised. See `INVENTORY-ORM-07-FINAL-ACCEPTANCE.md` and the updated test report for final run detail. No credential, TinyDB file, backup, or user record is included in the repository deliverable.

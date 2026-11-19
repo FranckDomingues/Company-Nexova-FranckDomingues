@@ -6,7 +6,7 @@ Date: 2026-11-18. Branch `feature/inventory-orm-dual-db`, PR #9 (not merged).
 
 - **T17: PASS.** Verified directly against the live development database.
 - **Official acceptance: 29/29 PASS** at requirement level.
-- **One verification gap remains open.** The 5 live PostgreSQL integration tests were **not rerun** after this change; they are reported as skipped below. The live-test opt-in and allowlist in the ignored `services/api/.env` are disabled, and populating them was left to the database owner rather than done by the agent. The milestone should be considered closed only after those 5 tests pass (see "Remaining action").
+- **PostgreSQL verification: PASS.** After the seed repair, all five live PostgreSQL integration tests passed, and the full suite passed 60/60 with no skips.
 
 ## 1. Authorized scope
 
@@ -96,24 +96,16 @@ Other canonical stock: NXV-IT-002=8; NXV-PER-002, NXV-OFF-001, NXV-TRN-001 = 0.
 
 ## 8. Automated tests
 
-`cd services/api && .venv/bin/pytest -v -rs`: **60 collected, 55 passed, 0 failed, 5 skipped.**
+Final execution on 2026-11-18, from `services/api`:
 
-The 5 skips are all live PostgreSQL tests: constraints, API persistence, TinyDB login→JWT→UUID, two-session concurrency, and seed. They skipped because `INVENTORY_POSTGRES_TESTS` is not `1` in `.env`. **Skips are not counted as PASS.**
+```text
+uv run --extra dev pytest -q -rs
+```
 
-The last recorded live run (`8e2ae01`, 5/5 PASS) predates this change. The rewritten seed test and the other live tests still need a rerun after this change.
+**60 passed, 0 failed, 0 skipped.** One existing Starlette/httpx deprecation warning was emitted. All five real PostgreSQL tests passed (not skipped): schema/FKs/checks/unique SKU; API stock and persistence; actual TinyDB login/JWT-to-order attribution; independent-session concurrency; and canonical seed counts, stock and idempotency. The focused PostgreSQL run also completed **5 passed, 0 failed, 0 skipped**.
 
-Offline coverage in this run: SQLModel models, Pydantic validation, all six inventory endpoints, insufficient stock returns 400, no write after a rejected exit, seed idempotency and attribution, and cwd-independent identity storage.
+The remaining 55 tests passed as isolated and regression coverage. The full-suite output and focused PostgreSQL output were observed during final evidence preparation. SQLite-backed tests are not used as PostgreSQL concurrency evidence.
 
 ## 9. Official acceptance matrix
 
 29/29 PASS. T17 changes from BLOCKED to **PASS**: the canonical seed (6/4/3, net stock correct, idempotent) is now attributed to a persistent, active TinyDB identity created through the application's own registration flow. All other rows are as recorded in `INVENTORY-ORM-01-CHECKLIST.md`.
-
-## Remaining action (owner)
-
-1. In the ignored `services/api/.env`, set:
-   - `INVENTORY_POSTGRES_TESTS=1`
-   - `INVENTORY_TEST_ENV=development`
-   - `INVENTORY_TEST_ALLOWED_DATABASE_HOST` / `_USER` / `_NAME` for the isolated development project
-2. Run `cd services/api && .venv/bin/pytest -v -rs`. The expected result is 60 passed and 0 skipped.
-
-No credentials, full UUIDs, e-mail addresses, hashes of secrets, or connection strings are recorded here.

@@ -1,27 +1,31 @@
-# Professor reproduction guide
+# Professor reproduction guide — final evidence
 
-## Local suite
+## Complete suite
 
-1. From repository root, enter `services/api`.
-2. Install dependencies with `uv sync --extra dev`.
-3. Run the complete suite: `uv run --extra dev pytest -q -rs`.
-4. Current observed run: **55 passed, 0 skipped, 0 failed**, including five real PostgreSQL tests. Without live-test configuration, the PostgreSQL tests are expected to skip and must not be called live evidence.
+From the repository root:
 
-## Secure live PostgreSQL setup
+```sh
+cd services/api
+uv sync --extra dev
+uv run --extra dev pytest -q -rs
+```
 
-1. Use only the explicitly authorized, isolated Nexova development Supabase project. In the dashboard, copy **Connect → Transaction pooler → URI**. Do not use production or a shared database.
-2. Copy `services/api/.env.example` to ignored `services/api/.env`; put the connection URI there only as `DATABASE_URL`. TLS is required (`sslmode=require`). Never place credentials in source, chat, terminal arguments, logs, commits or PR text.
-3. Add explicit `INVENTORY_TEST_ENV=development`, `INVENTORY_POSTGRES_TESTS=1`, and exact `INVENTORY_TEST_ALLOWED_DATABASE_HOST`, `INVENTORY_TEST_ALLOWED_DATABASE_USER`, `INVENTORY_TEST_ALLOWED_DATABASE_NAME` values that match the URL's host, username and database. The fixture fails closed if the file is not Git-ignored or the allowlist differs.
-4. For seed test only, additionally set `INVENTORY_SEED_ENV=development` and exact `INVENTORY_SEED_ALLOWED_DATABASE_HOST`, `INVENTORY_SEED_ALLOWED_DATABASE_USER`, `INVENTORY_SEED_ALLOWED_DATABASE_NAME`. Never run the seed against anything other than the approved isolated dev DB.
-5. Run `uv run --extra dev pytest -q -rs tests/test_inventory_postgres.py`. Tests create uniquely named disposable rows; cleanup only targets those rows. They do not drop/truncate tables. SQLModel `create_all` is additive. Never clear or alter existing seed records as a test shortcut.
-6. For an actual professor demo seed, ensure an existing authorized active TinyDB user is available and that canonical seed rows are attributed to an authorized UUID. Current T17 attribution is unresolved. A read-only follow-up confirmed application auth and seed use the same TinyDB resolver/path (`SUPPLIER_DB_PATH`, defaulting to `services/api/data/suppliers.json`); the selected file currently contains zero users. No other TinyDB database or backup was found in the repository. The current local PostgreSQL configuration exposed no inventory tables, so the previous canonical order UUID could not be compared in this follow-up. Do not invent identity or silently rewrite records. Coordinate with the authorized DB owner to confirm the correct isolated DB and recover an original identity from an authorized backup, or obtain explicit authorization for a narrowly scoped disposable-seed replacement after preserving backup and attribution evidence.
-7. Run the full suite after live tests. Review `INVENTORY-ORM-01-CHECKLIST.md` and test report: recorded status remains 28/29 official tasks PASS, T17 BLOCKED. The follow-up was read-only and is not a new live integration test run.
+Final observed result on 2026-11-18: **60 passed, 0 failed, 0 skipped**, including five real PostgreSQL integration tests. One Starlette/httpx deprecation warning is present. Do not describe a run with skipped live tests as live PostgreSQL verification.
 
-The live concurrency test runs two simultaneous requests, verifies distinct PostgreSQL backend PIDs, and asserts one allowed commit, one HTTP 400, and nonnegative final stock. This is PostgreSQL evidence, not SQLite simulation.
+## Secure PostgreSQL configuration
 
-## Update (INVENTORY-ORM-07)
+1. Use only the authorized, isolated Nexova development Supabase project and its transaction-pooler URI. Configure it only in ignored `services/api/.env` as `DATABASE_URL`; TLS is required (`sslmode=require`). Never paste or print the URI, password, token, or full user identity.
+2. For real PostgreSQL integration tests, explicitly configure `INVENTORY_POSTGRES_TESTS=1`, `INVENTORY_TEST_ENV=development`, and the exact matching `INVENTORY_TEST_ALLOWED_DATABASE_HOST`, `_USER`, and `_NAME`. The test fixture fails closed when these do not match the URL or the `.env` is not ignored.
+3. For the guarded development seed, configure `INVENTORY_SEED_ENV=development` and matching `INVENTORY_SEED_ALLOWED_DATABASE_HOST`, `_USER`, and `_NAME`. The canonical seed reads its owner only from the persistent TinyDB configured for the application and refuses temporary stores.
+4. Run the complete suite as shown above. The final verified run had all five PostgreSQL tests passing. They cover schema/constraints, endpoints and persistence, real TinyDB authentication and UUID attribution, independent-connection concurrency, and seed correctness/idempotency.
 
-- `SUPPLIER_DB_PATH` may be relative; it is resolved against `services/api`, not the working directory.
-- The canonical seed (`python -m app.inventory_seed`, from `services/api`) uses the first active user of the configured persistent TinyDB. It refuses temporary stores and takes no user override.
-- The live seed test seeds a unique `TST-<hex>-` catalog and removes it; it never creates or changes `NXV-*` rows.
-- Step 6 above is now satisfied: canonical orders are attributed to a persistent user registered via `POST /users`. Status: 29/29.
+## Seed identity and T17
+
+T17 is PASS following the authorized repair documented in `INVENTORY-ORM-07-FINAL-ACCEPTANCE.md`. The seven canonical order rows were backed up and replaced with orders attributed to a persistent active TinyDB user; unrelated inventory data was verified unchanged. The seed is idempotent and refuses temporary identity stores. Canonical derived stock is `NXV-IT-001=12` and `NXV-PER-001=17`. Do not manually rewrite `user_uuid` or run the seed against any database other than the approved isolated development target.
+
+## Evidence files
+
+- `INVENTORY-ORM-01-CHECKLIST.md`: exact one-to-one official 29-task matrix and six endpoint subchecks.
+- `INVENTORY-ORM-01-TEST-REPORT.md`: final test totals and integration evidence.
+- `INVENTORY-ORM-01-ARCHITECTURE.md`: persistence, models, auth, stock and concurrency.
+- `INVENTORY-ORM-07-FINAL-ACCEPTANCE.md`: authorized T17 repair record and verification details.
