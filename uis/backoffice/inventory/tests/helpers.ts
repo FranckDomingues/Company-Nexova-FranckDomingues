@@ -81,7 +81,7 @@ export async function mountApp(path: string, options: { session?: AuthSession; h
   const session = options.session ?? fakeSession(true);
   const { fetcher, calls } = mockFetch(options.handler ?? defaultBackend());
   let app: ReturnType<typeof createApp> | null = null;
-  const api = createInventoryApi({ apiBase: 'http://api.test', fetcher, getAuthorizationHeader: () => session.getAuthorizationHeader(), onUnauthorized: () => { void app?.redirectToLogin(); } });
+  const api = createInventoryApi({ apiBase: 'http://api.test', fetcher, getAuthorizationHeader: () => session.getAuthorizationHeader(), onUnauthorized: () => { void app?.redirectToLogin('session'); } });
   const root = document.getElementById('app')!;
   app = createApp({ root, win: window, session, auth: fakeAuth, api, nav: document.getElementById('inventory-nav'), account: document.getElementById('account-tools') });
   mounted.push(app);

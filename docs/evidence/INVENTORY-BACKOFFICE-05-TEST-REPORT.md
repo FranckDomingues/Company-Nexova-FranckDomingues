@@ -2,13 +2,13 @@
 
 ## Decision
 
-**PARTIAL.**
+**PASS: 30/30** (20 development + 10 official evaluation criteria).
 
 | Block | Result |
 |---|---|
 | Development criteria | 20/20 PASS |
-| Provisional acceptance checks | 10/10 PASS |
-| Official evaluation criteria | EVAL-10 **PASS**; EVAL-01…09 **BLOCKED** (official text not supplied). Verified official total **21/30**. |
+| Provisional engineering checks (PROV-01…10, internal) | 10/10 PASS |
+| Official evaluation criteria | **10/10 PASS** (original 4Geeks rubric supplied 2026-11-18). **Final total 30/30.** |
 
 Every executable check passes. The milestone is not reported as 30/30 official.
 
@@ -43,6 +43,14 @@ The historical results from the first delivery (45 Jest, 20 E2E, 60 pytest) were
 
 1. **Fix:** on its initial load, the outbound form showed an empty, disabled selector with no loading text. It now shows "Cargando activos…" and "Cargando stock…", like the inbound form (`src/views/outbound.ts`).
 2. **New tests:** `tests/route-states.test.ts` checks a loading state, a successful state with real response data, and a readable Spanish error on HTTP 500 for each of the four routes. The error check also confirms that no backend internals and no token appear on screen.
+
+## Official rubric mapping (2026-11-18)
+
+EVAL-01…09 were verified against the code and existing test evidence; the mapping is in the checklist.
+
+- **EVAL-04:** the review found two unreported inbound outcomes: a 401 during submit, and a stock-refresh failure after success. Both were fixed minimally, and two regression tests were added.
+- **Tests run (affected only):** `npx jest tests/inbound.test.ts tests/routes.test.ts tests/api.test.ts` gives **28 passed**. Type check, lint and build pass.
+- **Not re-run:** the full suites, E2E and screenshots. Earlier full-run results stay as recorded above. The E2E flows do not exercise the two new edge paths, which are covered by the unit tests.
 
 ## EVAL-10 terminology check (2026-11-18)
 
@@ -101,7 +109,6 @@ Headless Chrome against the real API (`e2e-results.json`, screenshots `00-login`
 
 ## Known limitations
 
-- The official Hito 5 evaluation rubric is unavailable, so the official criteria are BLOCKED.
 - The in-memory session means a full page reload requires signing in again. This is deliberate: no token persistence.
 - Public GET endpoints by contract (see above).
 - Tailwind CDN, as on the existing supplier page; the browser logs a "not for production" notice.

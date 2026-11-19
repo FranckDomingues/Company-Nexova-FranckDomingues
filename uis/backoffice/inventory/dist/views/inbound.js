@@ -66,9 +66,10 @@ export async function renderInbound(ctx) {
         try {
             await ctx.api.createInboundOrder({ asset_id: valid.asset.id, quantity: valid.quantity, supplier: valid.supplier, office: valid.asset.office });
             form.reset();
-            await loadAssets('');
-            const updated = assets.find(a => a.id === valid.asset.id);
-            status.replaceChildren(banner('success', `Entrada registrada: +${valid.quantity} × ${valid.asset.name} (${valid.asset.sku}) de ${valid.supplier}. ${TERMS.currentStock}: ${updated?.current_stock ?? 'actualizado'}.`));
+            const refreshed = await loadAssets('');
+            const updated = refreshed ? assets.find(a => a.id === valid.asset.id) : undefined;
+            const registered = `Entrada registrada: +${valid.quantity} × ${valid.asset.name} (${valid.asset.sku}) de ${valid.supplier}.`;
+            status.replaceChildren(banner('success', updated ? `${registered} ${TERMS.currentStock}: ${updated.current_stock}.` : registered), ...(refreshed ? [] : [h('p', { role: 'alert', className: `mt-2 ${UI.error}`, dataset: { state: 'refresh-error' } }, 'La entrada se registró, pero no se pudo actualizar el stock mostrado. Recarga la página de activos para ver el stock actual.')]));
         }
         catch (error) {
             if (error instanceof ApiError) {

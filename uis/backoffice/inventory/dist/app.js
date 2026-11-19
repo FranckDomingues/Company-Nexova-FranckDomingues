@@ -25,13 +25,16 @@ export function createApp(deps) {
         win.history[options.replace ? 'replaceState' : 'pushState']({}, '', to);
         await render();
     }
-    /** Route through the existing login flow, remembering where the user was going. */
-    function redirectToLogin() {
+    /**
+     * Route through the existing login flow, remembering where the user was going.
+     * `reason: 'session'` (API 401 during use) makes the login page say the last operation was not completed.
+     */
+    function redirectToLogin(reason) {
         if (currentPath() === PATHS.login)
             return Promise.resolve();
         const next = `${win.location.pathname}${win.location.search}`;
         session.logout();
-        return navigate(`${PATHS.login}?next=${encodeURIComponent(next)}`, { replace: true });
+        return navigate(`${PATHS.login}?next=${encodeURIComponent(next)}${reason ? `&reason=${reason}` : ''}`, { replace: true });
     }
     function updateChrome(path, authenticated) {
         if (deps.nav) {

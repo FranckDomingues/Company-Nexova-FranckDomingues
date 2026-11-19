@@ -45,12 +45,15 @@ export function createApp(deps: AppDeps) {
     await render();
   }
 
-  /** Route through the existing login flow, remembering where the user was going. */
-  function redirectToLogin(): Promise<void> {
+  /**
+   * Route through the existing login flow, remembering where the user was going.
+   * `reason: 'session'` (API 401 during use) makes the login page say the last operation was not completed.
+   */
+  function redirectToLogin(reason?: 'session'): Promise<void> {
     if (currentPath() === PATHS.login) return Promise.resolve();
     const next = `${win.location.pathname}${win.location.search}`;
     session.logout();
-    return navigate(`${PATHS.login}?next=${encodeURIComponent(next)}`, { replace: true });
+    return navigate(`${PATHS.login}?next=${encodeURIComponent(next)}${reason ? `&reason=${reason}` : ''}`, { replace: true });
   }
 
   function updateChrome(path: string, authenticated: boolean): void {

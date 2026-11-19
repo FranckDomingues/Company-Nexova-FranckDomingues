@@ -78,4 +78,28 @@ describe('inbound order form', () => {
     await flush();
     expect(calls.filter(c => c.method === 'POST')).toHaveLength(1);
   });
+
+  it('never fails silently: a 401 on submit sends the user to login with an explanation', async () => {
+    await mountApp(`${PATH}?asset_id=1`, { handler: defaultBackend({ 'POST /inventory/orders/inbound': () => ({ status: 401, body: { detail: 'Invalid or expired bearer token' } }) }) });
+    setValue('#quantity', '2');
+    setValue('#supplier', 'TechDistrib Valencia S.L.');
+    await submit('#inbound-form');
+    expect(window.location.pathname).toBe('/backoffice/login');
+    expect(new URLSearchParams(window.location.search).get('next')).toBe(`${PATH}?asset_id=1`);
+    expect($('[data-state="session-expired"]').textContent).toContain('La última operación no se completó');
+  });
+
+  it('never fails silently: success with a failed stock refresh shows both, without stale stock', async () => {
+    let gets = 0;
+    await mountApp(`${PATH}?asset_id=1`, { handler: defaultBackend({
+      'GET /inventory/products': () => (++gets === 1 ? { body: ASSETS } : { status: 500, body: { detail: 'Database unavailable' } }),
+    }) });
+    setValue('#quantity', '5');
+    setValue('#supplier', 'TechDistrib Valencia S.L.');
+    await submit('#inbound-form');
+    const success = $('[data-state="success"]').textContent!;
+    expect(success).toContain('Entrada registrada: +5 × Portátil 14" Business');
+    expect(success).not.toContain('Stock actual');
+    expect($('[data-state="refresh-error"]').textContent).toContain('no se pudo actualizar el stock mostrado');
+  });
 });

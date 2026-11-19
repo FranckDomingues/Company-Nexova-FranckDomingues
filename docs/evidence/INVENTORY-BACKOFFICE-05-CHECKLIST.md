@@ -10,10 +10,10 @@
 | Block | Result |
 |---|---|
 | Development criteria (derived from the milestone brief) | **20/20 PASS** |
-| Provisional engineering acceptance checks | **10/10 PASS** (provisional, not the official rubric) |
-| Official evaluation criteria | **EVAL-10 PASS** (criterion text supplied by the owner on 2026-11-18); **EVAL-01…09 BLOCKED** (official text not yet supplied) |
+| Provisional engineering checks (PROV-01…10) | **10/10 PASS** (internal checks, kept for traceability; superseded by the official rubric) |
+| Official 4Geeks evaluation criteria (EVAL-01…10) | **10/10 PASS**: rubric transcribed from the original 4Geeks HTML rubric and supplied by the owner on 2026-11-18 |
 
-The official score is **not** reported as 30/30. That requires the official text of EVAL-01…09, mapped one-to-one.
+**Official total: 30/30 PASS** (20 development criteria + 10 official evaluation criteria). Each criterion is mapped to code and to test evidence below.
 
 ## How tests are labelled
 
@@ -50,29 +50,51 @@ Paths are relative to `uis/backoffice/inventory/` unless stated otherwise.
 
 ## Provisional engineering acceptance checks (10)
 
-These are **provisional engineering checks defined for this delivery**. They are **not** quotations of the official 4Geeks Academy rubric, and the official column stays BLOCKED until that text is supplied.
+These are **provisional engineering checks defined for this delivery**. They are **not** quotations of the official 4Geeks Academy rubric; the official EVAL-01…10 mapping is in the next section.
 
-| ID | Provisional check | Mapped evidence | Provisional result | Official rubric result |
-|---|---|---|---|---|
-| EVAL-01 | Real inventory API integration | API-1; live suite 5/5; E2E (UI vs API comparisons) | PASS | BLOCKED |
-| EVAL-02 | Authentication and protected routes | API-2, AUTH-1; E2E 4 redirects + login return + no token persisted | PASS | BLOCKED |
-| EVAL-03 | Product listing and stock visualization | PRD-1…4; `01-products.png` | PASS | BLOCKED |
-| EVAL-04 | Inbound orders correctly increase stock | IN-1…3; E2E 19 → 23 in the backend; live suite | PASS | BLOCKED |
-| EVAL-05 | Outbound orders correctly decrease stock | OUT-1, OUT-4; E2E 23 → 21; live suite | PASS | BLOCKED |
-| EVAL-06 | Insufficient-stock handling and server-side enforcement | OUT-3/4; real HTTP 400 in live + E2E; the client warning never blocks the request | PASS | BLOCKED |
-| EVAL-07 | Read-only inventory movement history | HIS-1…4; `05-history.png` | PASS | BLOCKED |
-| EVAL-08 | Form validation and readable HTTP errors | API-3, IN-2, IN-4; real 422 in the live suite | PASS | BLOCKED |
-| EVAL-09 | Type checking, lint, build and automated tests | Test report: typecheck/lint/build PASS; Jest 54 passed; E2E 20/20; pytest 60 passed | PASS | BLOCKED |
-| EVAL-10 | Navigation integration, documentation and reproducibility | Supplier-page nav link; `inventory/README.md`; reproduction section; self-contained `npm run e2e` | PASS | Superseded by the official EVAL-10 below |
+| ID | Provisional check | Mapped evidence | Provisional result |
+|---|---|---|---|
+| PROV-01 | Real inventory API integration | API-1; live suite 5/5; E2E (UI vs API comparisons) | PASS |
+| PROV-02 | Authentication and protected routes | API-2, AUTH-1; E2E 4 redirects + login return + no token persisted | PASS |
+| PROV-03 | Product listing and stock visualization | PRD-1…4; `01-products.png` | PASS |
+| PROV-04 | Inbound orders correctly increase stock | IN-1…3; E2E 19 → 23 in the backend; live suite | PASS |
+| PROV-05 | Outbound orders correctly decrease stock | OUT-1, OUT-4; E2E 23 → 21; live suite | PASS |
+| PROV-06 | Insufficient-stock handling and server-side enforcement | OUT-3/4; real HTTP 400 in live + E2E; the client warning never blocks the request | PASS |
+| PROV-07 | Read-only inventory movement history | HIS-1…4; `05-history.png` | PASS |
+| PROV-08 | Form validation and readable HTTP errors | API-3, IN-2, IN-4; real 422 in the live suite | PASS |
+| PROV-09 | Type checking, lint, build and automated tests | Test report: typecheck/lint/build PASS; Jest 54 passed; E2E 20/20; pytest 60 passed | PASS |
+| PROV-10 | Navigation integration, documentation and reproducibility | Supplier-page nav link; `inventory/README.md`; reproduction section; self-contained `npm run e2e` | PASS |
 
 ## Official evaluation criteria
 
-Only criteria whose official text has been supplied are mapped. **No criterion text is inferred.**
+**Source.** The original 4Geeks Academy HTML rubric, transcribed and supplied by the owner on 2026-11-18. The criterion wording below is quoted from that transcription.
+
+### EVAL-04 fix note
+
+Verification found two inbound outcomes that were not clearly reported:
+
+1. A 401 during submit redirected to login with no explanation.
+2. A failed stock refresh after a successful order was overwritten by the success banner, which still showed the previous stock.
+
+Minimal fixes, in `src/app.ts`, `src/main.ts`, `src/views/login.ts` and `src/views/inbound.ts`:
+
+- A 401 now redirects to `/backoffice/login?next=…&reason=session`, and the login page states that the last operation was not completed.
+- A refresh failure now keeps the success confirmation without stale stock and adds a visible warning.
+
+Two regression tests were added in `tests/inbound.test.ts`. No backend or API contract changed.
 
 | ID | Official criterion (as supplied) | Result | Evidence |
 |---|---|---|---|
-| EVAL-01 … EVAL-09 | Text not supplied | BLOCKED | Supporting evidence is in the provisional checks above, but it is not attributed to the official rubric. |
-| EVAL-10 | "All inventory interface entity names and field labels must match `company-BRIEFING.md`." | **PASS** | See the verification below. |
+| EVAL-01 | A dedicated API integration module exists. Components contain no direct fetch calls. | **PASS** | `src/lib/inventory.ts` is the only inventory HTTP module. `fetch` appears in `src/` only at `lib/inventory.ts:159`; auth calls live in the existing `../suppliers/src/auth-session.ts` module. Test `api.test.ts` "views never call fetch directly" plus the four-operation path/method test. |
+| EVAL-02 | Every request to protected endpoints includes the Authorization header with the current user's token. | **PASS** | `lib/inventory.ts:163-168` builds `Authorization` from the live session for every inventory request. With no session there is no request and the user goes to login. `auth-session.ts` sends Bearer to `/auth/me`. Tests: `api.test.ts` "sends Authorization: Bearer <token> on every request" and "does not call the API without a session". Live: real 401 for an invalid token; real authenticated inbound/outbound in the live suite and E2E. |
+| EVAL-03 | The products page loads real API data and displays current_stock with visual stock-level indicators. | **PASS** | `views/products.ts`, `stock.ts` (documented thresholds). Tests: `products.test.ts` (GET `/inventory/products`, `current_stock`, Disponible / Stock bajo / Sin stock), `route-states.test.ts`. E2E: UI rows equal the API for all 6 assets, including stock levels (`01-products.png`). |
+| EVAL-04 | The inbound order form submits successfully and displays confirmation or readable API errors for every outcome, without silent failures. | **PASS** | `views/inbound.ts`; `parseErrorResponse`. Outcomes covered: success (confirmation + reset), 400/500 banners, 422 field errors, network error, refresh failure after success, and 401 → login with an explicit "la última operación no se completó" notice. Tests: `inbound.test.ts` (success, 400, 500, validation, duplicate guard, 401 notice, refresh failure), `api.test.ts` (403/404/422/5xx/network). E2E: backend stock 19 → 23 (`02-inbound-success.png`). See the fix note below. |
+| EVAL-05 | The outbound form reactively displays the selected product's current stock before submission. | **PASS** | `views/outbound.ts` `refreshStockView` on product change. Tests: `outbound.test.ts` "shows the selected product current_stock before submission and reacts to changes" (12 → 4 → 0). E2E: live stock 23 shown before submit (`03-outbound-insufficient-stock.png`). |
+| EVAL-06 | The outbound form displays a client-side warning when requested quantity exceeds available stock. | **PASS** | `#quantity-warning` in `views/outbound.ts`. Tests: `outbound.test.ts` "warns client-side when quantity exceeds available stock" (hidden at 4, shown at 9, re-evaluated on product change). E2E: warning visible at quantity 28 vs stock 23. |
+| EVAL-07 | An HTTP 400 response from the outbound endpoint displays the API error visibly in the interface. | **PASS** | The 400 path in `views/outbound.ts` puts the API `detail` inline beside Cantidad (`#quantity-error`, `aria-invalid`). Tests: `outbound.test.ts` "shows the API HTTP 400 … inline beside quantity". Live suite and E2E: real FastAPI 400 "Insufficient stock for asset 'Ratón ergonómico'. Available: 23, requested: 28." shown (`03-…png`). |
+| EVAL-08 | The order history displays all orders with inbound/outbound distinction, product name, quantity, creation date and user_uuid. | **PASS** | `views/history.ts` (Fecha from `created_at`, ↓Entrada / ↑Salida with colour accent, product name via `resolveAssetName`, ±quantity, `user_uuid`). Tests: `history.test.ts` (all rows, fields, distinction, names, read-only). E2E: 12 UI rows = 12 API orders, `user_uuid` present (`05-history.png`). |
+| EVAL-09 | All four inventory pages redirect unauthenticated users to login. | **PASS** | `app.ts` `PROTECTED_ROUTES` guard → `/backoffice/login?next=…`. Tests: `routes.test.ts` (each of the 4 routes: redirect, no request, no protected DOM). E2E: 4 real-browser redirects (`00-login.png`). |
+| EVAL-10 | Entity names and field labels match the company briefing. | **PASS** | Verified in `891be86`; see the verification below. |
 
 ### EVAL-10 verification
 
@@ -115,8 +137,8 @@ No generic "Producto/Product" or "Inbound/Outbound" label appears; `tests/termin
 ## Totals
 
 - **Development:** 20/20 PASS.
-- **Provisional acceptance:** 10/10 PASS.
-- **Official evaluation:** EVAL-10 PASS; EVAL-01…09 BLOCKED pending their official text.
-- **Verified official total:** **21/30** (20 task criteria + EVAL-10). The other 9 are BLOCKED, not FAIL.
+- **Provisional engineering checks (PROV):** 10/10 PASS. These are internal checks and do not count toward the 30.
+- **Official evaluation:** **10/10 PASS** (EVAL-01…10).
+- **Final total:** **30/30 PASS**.
 
 No criterion is counted twice.

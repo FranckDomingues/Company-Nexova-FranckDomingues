@@ -38,8 +38,13 @@ export function renderLogin(ctx: ViewContext): void {
       submit.textContent = 'Entrar';
     }
   });
+  const expired = ctx.params.get('reason') === 'session'
+    ? h('p', { role: 'alert', className: `mt-4 ${UI.error}`, dataset: { state: 'session-expired' } },
+      'Tu sesión no es válida o ha caducado. La última operación no se completó: inicia sesión de nuevo y vuelve a intentarlo.')
+    : null;
   ctx.root.append(h('section', { id: 'login-gate', className: `mx-auto max-w-md p-6 ${UI.card}`, 'aria-labelledby': 'login-title' },
     h('h1', { id: 'login-title', className: 'text-2xl font-bold' }, 'Iniciar sesión'),
+    expired,
     h('p', { className: 'mt-2 text-sm text-slate-600' }, 'Accede con tu cuenta Nexova para gestionar el inventario de activos.'),
     form,
   ));

@@ -9,7 +9,7 @@ let app = null;
 const api = createInventoryApi({
     apiBase,
     getAuthorizationHeader: () => session.getAuthorizationHeader(),
-    onUnauthorized: () => { void app?.redirectToLogin(); },
+    onUnauthorized: () => { void app?.redirectToLogin('session'); },
 });
 const root = document.getElementById('app');
 if (!root)
