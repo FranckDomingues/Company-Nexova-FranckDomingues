@@ -17,7 +17,8 @@ export const ORDERS: InventoryOrder[] = [
 ];
 
 export interface Call { url: string; method: string; headers: Record<string, string>; body: unknown }
-type Handler = (call: Call) => { status?: number; body?: unknown; raw?: string } | Promise<{ status?: number; body?: unknown; raw?: string }> | 'network-error';
+type Reply = { status?: number; body?: unknown; raw?: string } | 'network-error';
+type Handler = (call: Call) => Reply | Promise<Reply>;
 
 /** fetch mock that records calls; real Response objects so the client parses real bodies. */
 export function mockFetch(handler: Handler) {

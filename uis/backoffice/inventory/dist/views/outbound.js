@@ -53,6 +53,11 @@ export async function renderOutbound(ctx) {
     exitType.control.addEventListener('change', syncExitType);
     async function loadAssets(selectedId) {
         asset.control.disabled = true;
+        if (!assets.length) {
+            // Initial load (refreshes keep the current options so the selection stays visible).
+            asset.control.replaceChildren(h('option', { value: '' }, 'Cargando activos…'));
+            stockPanel.replaceChildren(h('span', { dataset: { state: 'loading' } }, 'Cargando stock…'));
+        }
         try {
             assets = await ctx.api.listProducts();
             fillProductSelect(asset.control, assets, selectedId);

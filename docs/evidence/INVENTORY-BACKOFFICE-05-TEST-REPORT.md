@@ -2,89 +2,132 @@
 
 ## Decision
 
-**PARTIAL: 20/30 PASS, 0 FAIL, 10 BLOCKED.**
+**PARTIAL.**
 
-All 20 task criteria derived from the milestone brief are implemented and verified, including against the real API in a real browser. The 10 evaluation criteria stay BLOCKED because the official rubric text was not supplied.
+| Block | Result |
+|---|---|
+| Development criteria | 20/20 PASS |
+| Provisional acceptance checks | 10/10 PASS |
+| Official evaluation criteria | **BLOCKED**: the official 4Geeks rubric text is unavailable |
 
-## Scope and base
+Every executable check passes. The milestone is not reported as 30/30 official.
 
-- **Branch:** `feature/inventory-backoffice`, created from `feature/inventory-orm-dual-db` at `a3c4c4e` (PR #9, unmerged). That branch contains the inventory API this UI consumes.
-- **Stack:** the repository has no Next.js app. `uis/backoffice` is static HTML + Tailwind CDN, so the UI follows that convention:
-  - TypeScript modules compiled to native ES modules in `dist/`
-  - one shell page with client-side routing for `/backoffice/inventory/...`
-  - Jest + jsdom tests
-- **Authentication:** reuses the existing `NexovaAuth` module from PR #8 (`feature/bullet-proof-applications`). `uis/backoffice/suppliers/src/auth-session.ts` and `dist/auth-session.js` are checked out **byte-identical**, so the two PRs merge cleanly. No backend changes were taken from PR #8.
-- **Backend:** no backend code was changed. The API contracts used are exactly those in `services/api/app/inventory_schemas.py`.
+## Scope
+
+- **Branch and base:** `feature/inventory-backoffice`, based on `feature/inventory-orm-dual-db` at `a3c4c4e` (PR #9, unmerged). PR #10 targets that base.
+- **Implementation commit:** `0de523f`. The final delivery commit (this report, the outbound loading-state fix and the per-route state tests) is the PR #10 head.
+- **Stack:** the existing backoffice convention (static HTML + Tailwind CDN + TypeScript ES modules + Jest). There is no Next.js app in the repository.
+- **Auth reuse:** the existing `NexovaAuth` module from PR #8 (`uis/backoffice/suppliers/{src,dist}/auth-session.*`), byte-identical. There is no second login system.
+- **Backend:** no backend code was changed by this milestone.
 
 ## Environment
 
-macOS 26.6.2 · Node 24.18.0 / npm 11.16.0 · Python 3.11.17 · Docker 29.9.3 · Google Chrome 157 (headless) · PostgreSQL 16 (disposable container).
+macOS 26.6.2 · Node 24.18.0 / npm 11.16.0 · Python 3.11.17 · Docker 29.9.3 · Google Chrome 157 (headless) · PostgreSQL 16 (disposable container for E2E) · Supabase development PostgreSQL (backend live tests only, owner-authorized).
 
-## Commands and results
+## Current results (2026-11-18, final run)
 
-| Command (in `uis/backoffice/inventory` unless noted) | Result |
-|---|---|
-| `npm run typecheck` (app + tests, strict) | PASS, 0 errors |
-| `npm run lint` (ESLint 9 + typescript-eslint) | PASS, 0 problems |
-| `npm run build` (`tsc` → `dist/`, 14 ES modules) | PASS |
-| `npm test` (Jest + jsdom, mocked fetch) | 50 collected: **45 passed, 0 failed, 5 skipped** (the 5 live tests skip unless the e2e runner provides an API) |
-| `npm run test:coverage` | statements 92.7%, branches 76.9%, functions 96.1%, lines 97.0% |
-| `npm run e2e` | **20/20 checks PASS**. Includes the Jest live suite at **5/5 passed** against the real API. See `inventory-backoffice-05/e2e-results.json`. |
-| `cd services/api && .venv/bin/pytest -q -rs` (backend regression) | **60 passed, 0 failed, 0 skipped** (includes the 5 live PostgreSQL tests enabled by the operator's local `.env`) |
+| Check | Command | Result |
+|---|---|---|
+| Type check | `npm run typecheck` | PASS |
+| Lint | `npm run lint` | PASS |
+| Production build | `npm run build` | PASS. The rebuilt `dist/` was byte-identical to the committed build before the outbound fix, and is rebuilt and committed with it. |
+| Frontend unit/component | `npm test` | **59 collected: 54 passed, 0 failed, 5 skipped**. The skips are the live-only tests, which run inside E2E. |
+| E2E (disposable stack) | `npm run e2e` | **20/20 PASS**, including the live API suite at **5/5 passed** |
+| Backend offline | `cd services/api && .venv/bin/pytest -q -m "not postgres_integration"` | **55 passed** |
+| Backend live PostgreSQL | `.venv/bin/pytest -q -m postgres_integration` (owner-authorized) | **5 passed**. Canonical rows, stock (IT-001 = 12, PER-001 = 17), attribution and table totals were read-only snapshotted and are identical before and after. |
+| **Backend total** | | **60 passed, 0 failed, 0 skipped** |
 
-Skipped tests are never counted as PASS.
+The historical results from the first delivery (45 Jest, 20 E2E, 60 pytest) were all re-executed above rather than carried over. The 9 additional Jest tests come from `tests/route-states.test.ts`.
 
-## Real API integration evidence (`npm run e2e`)
+## Changes in this delivery (gap closure only)
 
-The runner isolates everything and never uses the database in `services/api/.env`:
+1. **Fix:** on its initial load, the outbound form showed an empty, disabled selector with no loading text. It now shows "Cargando activos…" and "Cargando stock…", like the inbound form (`src/views/outbound.ts`).
+2. **New tests:** `tests/route-states.test.ts` checks a loading state, a successful state with real response data, and a readable Spanish error on HTTP 500 for each of the four routes. The error check also confirms that no backend internals and no token appear on screen.
 
-1. A disposable PostgreSQL 16 container with TLS on, a random port and password, removed afterwards.
-2. The real FastAPI app with a temporary TinyDB and a random JWT secret. CORS is allowlisted for the backoffice origin only.
-3. The briefing seed is created **through the public API only**: `POST /users`, `/auth/login`, `/inventory/products` and orders. The result is NXV-IT-001 = 12 and NXV-PER-001 = 17, and the rows are verified to exist only in the container.
-4. `tests/live.integration.test.ts` uses the real `NexovaAuth` login, real HTTP and the real views:
-   - Bearer token issued; a real 401 for an invalid token.
-   - Inbound increases and outbound decreases stock.
-   - Real 400 for insufficient stock and real 422 for a missing employee.
-   - The outbound UI shows the real 400 inline and then succeeds.
-   - History matches the API.
-5. Headless Chrome (CDP, no extra dependencies) checks:
-   - all four routes redirect unauthenticated users to login without rendering data
-   - login returns to the requested route
-   - products match the API, including stock indicators
-   - product action → preselected inbound form → stock +4 in the backend, with the double submit guarded and the form reset
-   - outbound shows live stock and the client warning → real 400 inline → allocation success, stock −2 in the backend
-   - history equals the API's orders, is read-only and shows `user_uuid`
-   - a reload drops the in-memory session, with no token in storage or cookies
-   - no JavaScript exceptions, and no unexpected failed requests (only the deliberate 400 and an absent favicon)
+## Backend/API evidence
 
-Screenshots are in `docs/evidence/inventory-backoffice-05/`: `00-login`, `01-products`, `02-inbound-success`, `03-outbound-insufficient-stock`, `04-outbound-success`, `05-history`.
+- The UI uses the contracts in `services/api/app/inventory_schemas.py` exactly.
+- The live suite checks against the real API:
+  - Bearer login
+  - a real 401 for an invalid token
+  - inbound +3 and outbound −1 stock changes
+  - a real 400 for insufficient stock
+  - a real 422 for an allocation without an employee
+- **API security boundary (Phase 6):**
+  - Writes (`POST /inventory/products`, `/orders/inbound`, `/orders/outbound`) require authentication and record the TinyDB `user_uuid`.
+  - `GET /inventory/products` and `GET /inventory/orders` are **intentionally public**:
+    - The milestone README says GET auth is decided by the company BRIEFING ("Si los `GET` son públicos o autenticados lo define tu BRIEFING.md").
+    - Nexova's BRIEFING requires no GET authentication, and its evaluator "llamará a `GET /inventory/products`" with no token.
+    - PR #9 tests this explicitly (`test_product_create_initial_zero_and_public_list_detail`).
+  - Requiring auth would break the established contract and possibly the evaluator, so it was **not changed**.
+  - The UI never requests or renders inventory data without a session. Frontend route protection is not presented as a backend control.
 
-## Authentication verification
+## Frontend/browser evidence
 
-- The JWT is held in memory by the existing module and is never written to storage or cookies (verified in the browser).
-- Every inventory request sends `Authorization: Bearer <token>`.
-- A missing or expired session, or an API 401, logs out and redirects to `/backoffice/login?next=…`. `next` only accepts `/backoffice/inventory/...` paths, which prevents open redirects.
+Headless Chrome against the real API (`e2e-results.json`, screenshots `00-login` … `05-history` in `docs/evidence/inventory-backoffice-05/`; no new screenshots were needed):
+
+- All four routes redirect unauthenticated users to login without rendering data.
+- Login returns to the requested route.
+- Products match the API, including stock levels.
+- The product action preselects the inbound form; the inbound order adds +4 in the backend once, with the double submit guarded and the form reset.
+- Outbound shows live stock and the client warning, then the real 400 inline, then an allocation adds −2 in the backend.
+- History matches the API, is read-only, and shows names, types, timestamps and `user_uuid`.
+- A reload drops the in-memory session.
+- No JavaScript exceptions.
+
+## Authentication evidence
+
+- The JWT is held in memory by the existing `NexovaAuth` module and never written to storage or cookies (browser-verified).
+- Every inventory request sends `Authorization: Bearer`.
+- A missing or expired session, or an API 401, logs out and redirects to `/backoffice/login?next=…`. `next` only accepts `/backoffice/inventory/…` paths.
+
+## Database security verification
+
+| Check | Result | Evidence |
+|---|---|---|
+| Password rotated in Supabase after the 2026-11-18 terminal exposure | **PASS (owner-confirmed)** | The owner confirmed resetting the database password in the Supabase dashboard and updating the ignored `services/api/.env` (modified 2026-11-18 21:52, after the exposure). The current configuration connects. The old password was **not** tested by the agent, to avoid reusing a leaked credential. |
+| `.env` tracked in Git | PASS | `services/api/.env` is ignored and appears in 0 commits across all refs. Only placeholders are in `.env.example`. |
+| Credentials in Git history | PASS | Redacted scan of all refs for connection strings and Supabase hosts: 9 matching commits, all placeholder fixtures (`dev-user`, `localhost`, e2e `${pgPassword}`). The real project ref and the current password appear in 0 commits. No history rewrite is needed. |
+| Secrets in this delivery | PASS | Staged-diff scan clean; `.env` / `.env*.local` ignored in the package. |
+| Hosted database settings | Not modified | No credential rotation or hosted configuration change was performed by the agent. |
 
 ## Known limitations
 
-- **Rubric:** the 10 evaluation criteria are BLOCKED until the official text is supplied.
-- **Session lifetime:** with the in-memory session, a full page reload requires signing in again. This is deliberate, to avoid persisting the token.
-- **Public GET endpoints:** the backend serves `GET /inventory/products` and `GET /inventory/orders` without authentication (existing contract, unchanged). The UI never requests or renders them without a session, but the API itself does not enforce it for GETs.
-- **Tailwind CDN:** the backoffice uses the Tailwind CDN like the existing supplier page. The browser logs its "not for production" warning.
-- **Static server:** routes need the SPA-aware `serve.cjs`. A plain static server such as the supplier README's `http-server` serves the supplier page but not the deep inventory routes.
+- The official Hito 5 evaluation rubric is unavailable, so the official criteria are BLOCKED.
+- The in-memory session means a full page reload requires signing in again. This is deliberate: no token persistence.
+- Public GET endpoints by contract (see above).
+- Tailwind CDN, as on the existing supplier page; the browser logs a "not for production" notice.
+- Deep links require the SPA-aware `serve.cjs`.
 
 ## Professor reproduction
 
+**Prerequisites:** Git, Node ≥ 22, Python 3.11 with `uv`, Docker and Google Chrome (the last two only for `npm run e2e`).
+
 ```bash
-git switch feature/inventory-backoffice
-cd services/api && uv sync && cd -                       # backend deps (psycopg2, FastAPI)
+git clone https://github.com/FranckDomingues/Company-Nexova-FranckDomingues.git
+cd Company-Nexova-FranckDomingues && git switch feature/inventory-backoffice
+cd services/api && uv sync --extra dev && cd -
 cd uis/backoffice/inventory && npm ci
-npm run typecheck && npm run lint && npm test && npm run build
-npm run e2e        # requires Docker + Google Chrome; fully self-contained and disposable
 ```
 
-Manual run against your own API (with `DATABASE_URL` configured):
+**Automated verification (no credentials needed):**
 
-1. `cd services/api && uv run uvicorn app.main:app --port 8000`
-2. `cd uis/backoffice/inventory && npm run serve`
-3. Open `http://127.0.0.1:5500/backoffice/inventory/products`. You will be redirected to login. Register a user with `POST /users` if needed.
+```bash
+npm run typecheck && npm run lint && npm test && npm run build
+npm run e2e        # disposable PostgreSQL + real API + headless Chrome; removes everything afterwards
+cd ../../../services/api && uv run pytest -q -m "not postgres_integration"
+```
+
+**Manual walkthrough:**
+
+1. **Environment:** `cp services/api/.env.example services/api/.env`. Set `DATABASE_URL` to your own PostgreSQL / Supabase pooler URI and set a random `JWT_SECRET_KEY`. Never commit `.env`.
+2. **Backend:** `cd services/api && uv run uvicorn app.main:app --port 8000`.
+3. **Frontend:** `cd uis/backoffice/inventory && npm run serve`, then open `http://127.0.0.1:5500/backoffice/inventory/products`.
+4. **Authentication:** create a user with `curl -X POST http://127.0.0.1:8000/users -H 'Content-Type: application/json' -d '{"email":"prof@example.com","password":"<choose-a-password>"}'`. Sign in on the redirected login page.
+5. **Products and history:**
+   - **Activos:** stock with Disponible / Stock bajo / Sin stock badges.
+   - **Registrar entrada:** quantity + supplier; stock increases.
+   - **Registrar salida:** shows the available stock; a quantity above it shows a warning, and submitting shows the server's insufficient-stock 400 next to Cantidad. A valid allocation or consumption decreases stock.
+   - **Historial:** read-only list of entradas and salidas with `user_uuid`.
+
+To create assets, use `POST /inventory/products` with a Bearer token, or the backend seed in PR #9.
