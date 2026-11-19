@@ -34,4 +34,7 @@ include = ["app*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-markers = ["postgres_integration: requires an explicitly allowlisted isolated PostgreSQL database"]
+markers = [
+    "postgres_integration: requires an explicitly allowlisted isolated PostgreSQL database",
+    "resend_live: calls the real Resend API (opt-in with RESEND_LIVE_TESTS=1; no secrets required)",
+]

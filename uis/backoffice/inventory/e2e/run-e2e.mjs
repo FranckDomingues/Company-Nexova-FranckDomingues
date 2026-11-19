@@ -50,6 +50,8 @@ function resendKeyFromApiEnv() {
 if (process.env.E2E_RESEND_TO && !process.env.E2E_RESEND_API_KEY) process.env.E2E_RESEND_API_KEY = resendKeyFromApiEnv();
 const REAL_RESEND = Boolean(process.env.E2E_RESEND_API_KEY && process.env.E2E_RESEND_TO);
 const results = [];
+/** Real Resend deliveries (message id, last_event, created_at). Never the recipient or the token. */
+const realDeliveryLog = [];
 const cleanups = [];
 
 function check(name, ok, detail = '') {
@@ -420,6 +422,20 @@ async function main() {
 
   // ---------------------------------------------------------------- AUTH-03 (password recovery) ----
   const providerLabel = REAL_RESEND ? 'REAL Resend' : 'SIMULATED provider (local Resend-compatible server)';
+  const realDeliveries = realDeliveryLog;
+  if (REAL_RESEND) {
+    // Preflight: the read-back needs a FULL-ACCESS key (GET /api-keys answers 200 only for those).
+    const probe = await fetch('https://api.resend.com/api-keys', { headers: { Authorization: `Bearer ${process.env.E2E_RESEND_API_KEY}`, 'User-Agent': 'nexova-e2e/1.0' } });
+    check('AUTH-03 Real Resend preflight: the configured key is valid and has full access', probe.status === 200, `HTTP ${probe.status}`);
+    // Delivery errors from the REAL provider never expose the key (opt-in pytest against api.resend.com).
+    const live = await new Promise(done => {
+      const child = spawn(join(API_DIR, '.venv/bin/python'), ['-m', 'pytest', '-q', '-m', 'resend_live', 'tests/test_resend_live.py'], { cwd: API_DIR, env: { ...process.env, RESEND_LIVE_TESTS: '1' } });
+      let out = '';
+      child.stdout.on('data', d => { out += d; });
+      child.on('close', status => done({ status, out }));
+    });
+    check('AUTH-03 Real Resend: provider errors are typed and never contain the key (live pytest)', live.status === 0, (live.out.match(/\d+ passed[^\n]*/) || ['no summary'])[0]);
+  }
   const readDb = () => JSON.parse(readFileSync(tinyDbPath, 'utf8'));
   const auditEvents = () => Object.values(readDb().password_audit_events ?? {});
   /** Waits for the reset email the API sent to `to` after `since` and returns { html, text, link, id }. */
@@ -432,19 +448,26 @@ async function main() {
       if (ok) {
         let mail;
         if (REAL_RESEND) {
-          for (let j = 0; j < 30 && !mail?.text; j++) {
+          // Real delivery = Resend reports last_event "delivered" (not merely accepted). Up to ~2 minutes.
+          for (let j = 0; j < 60; j++) {
             const r = await fetch(`https://api.resend.com/emails/${ok.provider_message_id}`, { headers: { Authorization: `Bearer ${process.env.E2E_RESEND_API_KEY}`, 'User-Agent': 'nexova-e2e/1.0' } });
             if (!r.ok) throw new Error(`Resend GET /emails/{id} -> ${r.status} (a full-access API key is required to read the sent email back)`);
             mail = await r.json();
-            if (!mail?.text) await sleep(1000);
+            if (['bounced', 'complained', 'failed', 'suppressed'].includes(mail.last_event)) throw new Error(`Resend reports last_event=${mail.last_event} for ${ok.provider_message_id}`);
+            if (mail.last_event === 'delivered') break;
+            await sleep(2000);
           }
+          if (mail?.last_event !== 'delivered') throw new Error(`Resend did not report delivery in time (last_event=${mail?.last_event})`);
+          realDeliveries.push({ id: ok.provider_message_id, last_event: mail.last_event, created_at: mail.created_at });
         } else {
           mail = captured.find(c => c.id === ok.provider_message_id).body;
         }
         const recipients = Array.isArray(mail.to) ? mail.to : [mail.to];
-        if (!recipients.includes(to)) throw new Error('reset email went to an unexpected recipient');
-        const link = (mail.text.match(/https?:\/\/\S+\/backoffice\/reset-password\?token=[\w-]+/) || [])[0];
-        return { html: mail.html, text: mail.text, link, id: ok.provider_message_id, lastEvent: mail.last_event };
+        if (!recipients.map(r => String(r).toLowerCase()).includes(to)) throw new Error('reset email went to an unexpected recipient');
+        // Resend may return text: null; fall back to the HTML body (unescaping &amp;).
+        const body = `${mail.text || ''}\n${String(mail.html || '').replace(/&amp;/g, '&')}`;
+        const link = (body.match(/https?:\/\/[^\s"'<>]+\/backoffice\/reset-password\?token=[\w-]+/) || [])[0];
+        return { html: mail.html, text: mail.text || '', link, id: ok.provider_message_id, lastEvent: mail.last_event };
       }
       await sleep(100);
     }
@@ -480,7 +503,8 @@ async function main() {
     await chrome.evaluate('document.querySelector("#forgot-form button").disabled && document.querySelector("#forgot-email").disabled && document.querySelector(\'[data-state="forgot-sent"]\').textContent.startsWith("Si esa dirección está registrada")'));
   await shot('12-forgot-confirmation.png');
   const mail = await fetchResetEmail(resetEmail, before);
-  check(`AUTH-03 Email: reset email accepted by the provider [${providerLabel}]`, Boolean(mail.id && mail.link),
+  check(REAL_RESEND ? 'AUTH-03 Email: REAL Resend accepted AND delivered the reset email (last_event=delivered)' : `AUTH-03 Email: reset email accepted by the provider [${providerLabel}]`,
+    Boolean(mail.id && mail.link) && (!REAL_RESEND || mail.lastEvent === 'delivered'),
     `message id ${mail.id}${mail.lastEvent ? `, last_event=${mail.lastEvent}` : ''}`);
   if (!REAL_RESEND) {
     const request = captured[captured.length - 1];
@@ -489,7 +513,7 @@ async function main() {
       ['from', 'to', 'subject', 'html', 'text'].every(k => k in request.body));
   }
   check('AUTH-03 Email: link points to the configured frontend /backoffice/reset-password?token=…',
-    mail.link.startsWith(`${webOrigin}/backoffice/reset-password?token=`) && mail.html.includes('name="viewport"') && mail.text.includes(mail.link));
+    mail.link.startsWith(`${webOrigin}/backoffice/reset-password?token=`) && mail.html.includes('name="viewport"') && (REAL_RESEND || mail.text.includes(mail.link)));
   const resetToken = new URL(mail.link).searchParams.get('token');
 
   // EXTRA-01: render the real email HTML on a phone-sized viewport.
@@ -609,7 +633,7 @@ try {
   console.error(`E2E FAILED: ${error.message}`);
 } finally {
   if (!process.env.E2E_KEEP_OPEN) for (const fn of cleanups.reverse()) { try { await fn(); } catch { /* best effort */ } }
-  const summary = { date: new Date().toISOString(), emailProvider: REAL_RESEND ? 'resend (real)' : 'simulated (local Resend-compatible server)', passed: results.filter(r => r.status === 'PASS').length, failed: results.filter(r => r.status === 'FAIL').length + (failed && !results.some(r => r.status === 'FAIL') ? 1 : 0), checks: results };
+  const summary = { date: new Date().toISOString(), emailProvider: REAL_RESEND ? 'resend (real)' : 'simulated (local Resend-compatible server)', ...(REAL_RESEND ? { resendDeliveries: realDeliveryLog } : {}), passed: results.filter(r => r.status === 'PASS').length, failed: results.filter(r => r.status === 'FAIL').length + (failed && !results.some(r => r.status === 'FAIL') ? 1 : 0), checks: results };
   mkdirSync(EVIDENCE, { recursive: true });
   writeFileSync(join(EVIDENCE, REAL_RESEND ? 'e2e-results-real-resend.json' : 'e2e-results.json'), JSON.stringify(summary, null, 2) + '\n');
   console.log(`\nE2E: ${summary.passed} passed, ${summary.failed} failed`);
