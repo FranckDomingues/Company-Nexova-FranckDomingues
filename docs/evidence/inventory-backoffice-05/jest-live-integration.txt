@@ -1,0 +1,13 @@
+PASS tests/live.integration.test.ts
+  live API integration (FastAPI + PostgreSQL)
+    ✓ authenticates through the existing auth module and obtains a Bearer token (1 ms)
+    ✓ rejects protected writes without a token (real 401) (4 ms)
+    ✓ inbound order increases stock; outbound decreases it; over-stock is a real HTTP 400 (37 ms)
+    ✓ UI: outbound form shows real stock, inline real 400, and success against the live API (90 ms)
+    ✓ UI: history lists real orders with names, types and the authenticated user_uuid (40 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        0.935 s, estimated 1 s
+Ran all test suites matching /tests\/live.integration.test.ts/i.
