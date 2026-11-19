@@ -2,6 +2,7 @@
 
 Usage (from services/api):
   uv run python scripts/configure_resend.py set-key [--replace]   # hidden prompt → .env (chmod 600)
+  uv run python scripts/configure_resend.py set-recipient         # E2E_RESEND_TO (your Resend account email)
   uv run python scripts/configure_resend.py status                # is a key set? which permission?
   uv run python scripts/configure_resend.py rotate-to-sending --delete-name NAME
         # with the current FULL-ACCESS key: create a sending-access key, store it in .env,
@@ -26,6 +27,7 @@ from pathlib import Path
 ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
 API = "https://api.resend.com"
 KEY_LINE = re.compile(r"^\s*RESEND_API_KEY\s*=(.*)$")
+RECIPIENT_LINE = re.compile(r"^\s*E2E_RESEND_TO\s*=(.*)$")
 SENDING_KEY_NAME = "nexova-api-sending"
 
 
@@ -109,8 +111,26 @@ def cmd_set_key(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_set_recipient(_args: argparse.Namespace) -> int:
+    address = input("Email address of your Resend account (E2E test recipient): ").strip()
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", address):
+        print("That is not a valid email address. Nothing was written.")
+        return 1
+    text = ENV_PATH.read_text() if ENV_PATH.exists() else ""
+    lines = [line for line in text.splitlines() if not RECIPIENT_LINE.match(line)]
+    if lines and lines[-1].strip():
+        lines.append("")
+    lines.append(f"E2E_RESEND_TO={address}")
+    write_env("\n".join(lines) + "\n")
+    print("Saved E2E_RESEND_TO to services/api/.env (git-ignored, mode 600).")
+    return 0
+
+
 def cmd_status(_args: argparse.Namespace) -> int:
-    key = read_key(ENV_PATH.read_text()) if ENV_PATH.exists() else ""
+    text = ENV_PATH.read_text() if ENV_PATH.exists() else ""
+    key = read_key(text)
+    recipient = any(RECIPIENT_LINE.match(line) and line.split("=", 1)[1].strip() for line in text.splitlines())
+    print(f"E2E_RESEND_TO: {'set' if recipient else 'not set'}")
     if not key:
         print("RESEND_API_KEY: not set")
         return 1
@@ -150,6 +170,7 @@ def main(argv: list[str] | None = None) -> int:
     set_key = sub.add_parser("set-key")
     set_key.add_argument("--replace", action="store_true")
     set_key.set_defaults(run=cmd_set_key)
+    sub.add_parser("set-recipient").set_defaults(run=cmd_set_recipient)
     sub.add_parser("status").set_defaults(run=cmd_status)
     rotate = sub.add_parser("rotate-to-sending")
     rotate.add_argument("--delete-name", required=True)

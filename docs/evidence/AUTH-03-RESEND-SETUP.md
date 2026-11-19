@@ -23,7 +23,8 @@ This guide uses placeholders only. **Never** put a real key, password or reset t
 ```sh
 cd services/api
 uv run python scripts/configure_resend.py set-key        # paste at the hidden prompt
-uv run python scripts/configure_resend.py status         # → "set (permission: full_access)"
+uv run python scripts/configure_resend.py set-recipient  # your Resend account email (E2E recipient)
+uv run python scripts/configure_resend.py status         # → "E2E_RESEND_TO: set" / "set (permission: full_access)"
 ```
 
 The helper:
@@ -40,10 +41,10 @@ Optional variables (see `services/api/.env.example`): `EMAIL_FROM` (default `Nex
 
 ```sh
 cd uis/backoffice/inventory
-E2E_RESEND_TO='<your-resend-account-email>' npm run e2e:password
+E2E_REAL_RESEND=1 npm run e2e:password
 ```
 
-- The key is read from `services/api/.env`. `E2E_RESEND_TO` must be your Resend account's own address while you use the `onboarding@resend.dev` sender.
+- `RESEND_API_KEY` and `E2E_RESEND_TO` are read from `services/api/.env`, so neither appears in the command. You can also pass `E2E_RESEND_TO='<your-resend-account-email>'` directly. It must be your Resend account's own address while you use the `onboarding@resend.dev` sender.
 - The run first checks that the key is valid and has full access. It then runs the live provider-error test and the full AUTH-03 browser flow, which **sends 3 real emails**.
 - It reads each email back from Resend and requires `last_event = delivered` before following the real link.
 - Results go to `docs/evidence/auth-03/e2e-results-real-resend.json`: Resend message ids, `last_event`, timestamps and per-check results. The file contains no recipient address, token or key.

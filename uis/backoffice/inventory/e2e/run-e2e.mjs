@@ -39,15 +39,24 @@ const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Conte
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 /** Optional filter so a milestone run only (re)writes its own screenshots. */
 const SHOT_FILTER = process.env.E2E_SCREENSHOTS ? new RegExp(process.env.E2E_SCREENSHOTS) : null;
-/** Real-provider mode is opt-in with E2E_RESEND_TO; the key comes from E2E_RESEND_API_KEY or the git-ignored services/api/.env. */
-function resendKeyFromApiEnv() {
+/**
+ * Real-provider mode is opt-in: E2E_RESEND_TO in the environment, or E2E_REAL_RESEND=1 to take
+ * E2E_RESEND_TO from the git-ignored services/api/.env (so the address never appears in a command).
+ * The key comes from E2E_RESEND_API_KEY or RESEND_API_KEY in that same .env file.
+ */
+function fromApiEnv(name) {
   try {
     const line = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../../../services/api/.env'), 'utf8')
-      .split('\n').find(l => /^\s*RESEND_API_KEY\s*=/.test(l));
+      .split('\n').find(l => new RegExp(`^\\s*${name}\\s*=`).test(l));
     return line ? line.split('=').slice(1).join('=').trim().replace(/^['"]|['"]$/g, '') : '';
   } catch { return ''; }
 }
-if (process.env.E2E_RESEND_TO && !process.env.E2E_RESEND_API_KEY) process.env.E2E_RESEND_API_KEY = resendKeyFromApiEnv();
+if (process.env.E2E_REAL_RESEND === '1' && !process.env.E2E_RESEND_TO) process.env.E2E_RESEND_TO = fromApiEnv('E2E_RESEND_TO');
+if (process.env.E2E_RESEND_TO && !process.env.E2E_RESEND_API_KEY) process.env.E2E_RESEND_API_KEY = fromApiEnv('RESEND_API_KEY');
+if (process.env.E2E_REAL_RESEND === '1' && !(process.env.E2E_RESEND_TO && process.env.E2E_RESEND_API_KEY)) {
+  console.error('E2E_REAL_RESEND=1 needs RESEND_API_KEY and E2E_RESEND_TO in services/api/.env (see docs/evidence/AUTH-03-RESEND-SETUP.md).');
+  process.exit(2);
+}
 const REAL_RESEND = Boolean(process.env.E2E_RESEND_API_KEY && process.env.E2E_RESEND_TO);
 const results = [];
 /** Real Resend deliveries (message id, last_event, created_at). Never the recipient or the token. */
