@@ -5,7 +5,8 @@ from pathlib import Path
 from tinydb import TinyDB
 from tinydb.table import Table
 
-DEFAULT_DATABASE_PATH = Path(__file__).resolve().parents[1] / "data" / "suppliers.json"
+API_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_DATABASE_PATH = API_DIR / "data" / "suppliers.json"
 
 
 @lru_cache(maxsize=8)
@@ -15,9 +16,21 @@ def _database_for(path: str) -> TinyDB:
     return TinyDB(database_path)
 
 
+def resolve_database_path() -> Path:
+    """Resolve SUPPLIER_DB_PATH independently of the process working directory.
+
+    Relative values (such as ``./data/suppliers.json`` in ``.env``) are anchored to
+    ``services/api`` so the API, the seed and scripts always share one TinyDB file.
+    """
+    raw = os.environ.get("SUPPLIER_DB_PATH", "").strip()
+    if not raw:
+        return DEFAULT_DATABASE_PATH
+    path = Path(raw).expanduser()
+    return path if path.is_absolute() else (API_DIR / path).resolve()
+
+
 def get_database() -> TinyDB:
-    path = os.environ.get("SUPPLIER_DB_PATH", str(DEFAULT_DATABASE_PATH))
-    return _database_for(path)
+    return _database_for(str(resolve_database_path()))
 
 
 def get_suppliers_table() -> Table:

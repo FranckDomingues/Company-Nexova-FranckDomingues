@@ -187,5 +187,7 @@ def test_user_and_profile_data_live_only_in_tinydb_tables(client):
     users = client.app.dependency_overrides[get_users_table]()
     profiles = client.app.dependency_overrides[get_profiles_table]()
     assert users.name == "users" and profiles.name == "profiles"
-    assert users.all()[0].keys() == {"id", "email", "hashed_password", "is_active", "role", "created_at"}
+    assert users.all()[0].keys() == {"id", "email", "user_uuid", "hashed_password", "is_active", "role", "created_at"}
+    from uuid import UUID
+    assert str(UUID(users.all()[0]["user_uuid"])) == users.all()[0]["user_uuid"]
     assert profiles.all()[0].keys() == {"id", "user_id", "name", "phone", "address"}

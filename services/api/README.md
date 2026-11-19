@@ -33,6 +33,10 @@ Use `Authorization: Bearer <access_token>`. Passwords are bcrypt-hashed. JWTs ar
 
 Interactive OpenAPI documentation is available at `/docs` while the API is running.
 
+## PostgreSQL inventory milestone groundwork
+
+`DATABASE_URL` is reserved for the PostgreSQL inventory database; use the Supabase transaction-pooler URI and keep `.env` local. The database infrastructure requires PostgreSQL and TLS (`sslmode=require`); it does not use SQLite as a fallback. TinyDB remains the separate user/auth store. Inventory domain implementation is blocked until the official Nexova inventory briefing and 29-task milestone source are available; see `docs/evidence/INVENTORY-ORM-01-*` from the repository root.
+
 ## AUTH-01 verification
 
 For a clean-clone instructor walkthrough, isolated TinyDB/password-hash bootstrap, complete automated suite, and Swagger steps, see [the AUTH-01 testing guide](../../docs/AUTH-01-TESTING.md). The evidence checklist is in [docs/evidence/auth-01.md](../../docs/evidence/auth-01.md).
