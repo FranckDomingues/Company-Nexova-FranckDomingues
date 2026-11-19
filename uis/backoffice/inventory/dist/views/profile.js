@@ -1,3 +1,4 @@
+import { PATHS } from '../context.js';
 import { h, UI } from '../dom.js';
 import { ApiError } from '../lib/http.js';
 import { banner, field, setFieldError } from './forms.js';
@@ -47,6 +48,7 @@ export async function renderProfile(ctx) {
     const status = h('div', { id: 'profile-status', 'aria-live': 'polite', className: 'mt-4' });
     const submit = h('button', { type: 'submit', className: UI.primary }, 'Guardar cambios');
     const form = h('form', { id: 'profile-form', className: 'mt-5 grid gap-4 sm:grid-cols-2', novalidate: true }, fields.name.wrapper, fields.phone.wrapper, h('div', { className: 'sm:col-span-2' }, fields.address.wrapper), h('p', { className: 'text-xs text-slate-500 sm:col-span-2' }, 'Deja un campo vacío para borrarlo. El correo y el rol no se modifican desde aquí.'), h('div', { className: 'sm:col-span-2' }, submit));
+    summary.append(h('p', { className: 'mt-5 text-sm' }, h('a', { id: 'change-password-link', href: PATHS.changePassword, 'data-link': true, className: 'font-medium text-sky-800 underline' }, 'Cambiar contraseña')));
     loading.replaceWith(summary, h('section', { className: `mt-6 p-5 sm:p-7 ${UI.card}`, 'aria-labelledby': 'profile-form-title' }, h('h2', { id: 'profile-form-title', className: 'text-xl font-semibold' }, 'Editar perfil'), status, form));
     let submitting = false;
     form.addEventListener('submit', async (event) => {

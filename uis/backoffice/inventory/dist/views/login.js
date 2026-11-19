@@ -9,7 +9,7 @@ import { h, UI } from '../dom.js';
 export function renderLogin(ctx) {
     const error = h('p', { id: 'login-error', role: 'alert', className: 'text-sm font-medium text-rose-700' });
     const submit = h('button', { type: 'submit', className: UI.primary }, 'Entrar');
-    const form = h('form', { id: 'login-form', className: 'mt-5 space-y-4', novalidate: true, 'aria-describedby': 'login-error' }, h('label', { className: UI.label }, 'Correo electrónico', h('input', { name: 'username', type: 'email', autocomplete: 'username', required: true, className: UI.input })), h('label', { className: UI.label }, 'Contraseña', h('input', { name: 'password', type: 'password', autocomplete: 'current-password', required: true, className: UI.input })), error, submit);
+    const form = h('form', { id: 'login-form', className: 'mt-5 space-y-4', novalidate: true, 'aria-describedby': 'login-error' }, h('label', { className: UI.label }, 'Correo electrónico', h('input', { name: 'username', type: 'email', autocomplete: 'username', required: true, className: UI.input })), h('label', { className: UI.label }, 'Contraseña', h('input', { name: 'password', type: 'password', autocomplete: 'current-password', required: true, className: UI.input })), h('p', { className: 'text-right text-sm' }, h('a', { id: 'forgot-password-link', href: PATHS.forgotPassword, 'data-link': true, className: 'font-medium text-sky-800 underline' }, '¿Olvidaste tu contraseña?')), error, submit);
     let submitting = false;
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -46,7 +46,9 @@ export function renderLogin(ctx) {
         ? h('p', { role: 'alert', className: `mt-4 ${UI.error}`, dataset: { state: 'session-expired' } }, 'Tu sesión no es válida o ha caducado. La última operación no se completó: inicia sesión de nuevo y vuelve a intentarlo.')
         : reason === 'logout'
             ? h('p', { role: 'status', className: `mt-4 ${UI.success}`, dataset: { state: 'logged-out' } }, 'Has cerrado sesión correctamente.')
-            : null;
+            : reason === 'password-reset'
+                ? h('p', { role: 'status', className: `mt-4 ${UI.success}`, dataset: { state: 'password-reset' } }, 'Tu contraseña se ha restablecido. Inicia sesión con la nueva contraseña.')
+                : null;
     const next = ctx.params.get('next');
     const registerHref = next ? `${PATHS.register}?next=${encodeURIComponent(next)}` : PATHS.register;
     ctx.root.append(h('section', { id: 'login-gate', className: `mx-auto max-w-md p-6 ${UI.card}`, 'aria-labelledby': 'login-title' }, h('h1', { id: 'login-title', className: 'text-2xl font-bold' }, 'Iniciar sesión'), notice, h('p', { className: 'mt-2 text-sm text-slate-600' }, 'Accede con tu cuenta Nexova al backoffice: inventario, proveedores y tu perfil.'), form, h('p', { className: 'mt-5 text-sm text-slate-600' }, '¿No tienes cuenta? ', h('a', { href: registerHref, 'data-link': true, className: 'font-medium text-sky-800 underline' }, 'Crear una cuenta'))));

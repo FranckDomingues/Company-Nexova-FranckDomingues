@@ -5,7 +5,8 @@
  *   /backoffice/login, /backoffice/register, /backoffice/account/profile,
  *   /backoffice/inventory/<route> (no file extension)
  *                                        -> inventory/index.html (client-side routing)
- *   /login, /register, /account/profile  -> 302 to the /backoffice/ equivalents (AUTH-02 route names)
+ *   /login, /register, /account/profile, /account/change-password, /forgot-password, /reset-password
+ *                                        -> 302 to the /backoffice/ equivalents (AUTH-02/03 route names)
  * Usage: node serve.cjs [--port 5500]  (env: PORT, NEXOVA_API_URL)
  */
 const http = require('node:http');
@@ -17,8 +18,13 @@ const SHELL = path.join(__dirname, 'index.html');
 const argPort = process.argv.indexOf('--port');
 const PORT = Number(argPort > -1 ? process.argv[argPort + 1] : process.env.PORT || 5500);
 const HOST = process.env.HOST || '127.0.0.1';
-const SHELL_ROUTES = new Set(['/backoffice/login', '/backoffice/register', '/backoffice/account/profile']);
-const ALIASES = { '/login': '/backoffice/login', '/register': '/backoffice/register', '/account/profile': '/backoffice/account/profile' };
+const SHELL_ROUTES = new Set(['/backoffice/login', '/backoffice/register', '/backoffice/account/profile',
+  '/backoffice/account/change-password', '/backoffice/forgot-password', '/backoffice/reset-password']);
+const ALIASES = {
+  '/login': '/backoffice/login', '/register': '/backoffice/register', '/account/profile': '/backoffice/account/profile',
+  '/account/change-password': '/backoffice/account/change-password', '/forgot-password': '/backoffice/forgot-password',
+  '/reset-password': '/backoffice/reset-password',
+};
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
 
 function send(res, status, body, type) {

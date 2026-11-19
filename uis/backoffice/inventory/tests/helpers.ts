@@ -69,6 +69,8 @@ export function fakeSession(authenticated = true): FakeSession {
     verify: jest.fn(async () => session.account),
     login: jest.fn(async (): Promise<unknown> => { session.loggedIn = true; return session.account; }),
     register: jest.fn(async (): Promise<unknown> => { session.loggedIn = true; return session.account; }),
+    requestPasswordReset: jest.fn(async (): Promise<void> => undefined),
+    resetPassword: jest.fn(async (): Promise<void> => undefined),
     logout: jest.fn((): void => { session.loggedIn = false; }),
   };
   return session;
@@ -80,6 +82,7 @@ export const fakeAuth: NexovaAuthModule = {
   validateLoginInput: NexovaAuth.validateLoginInput,
   validateRegistrationInput: NexovaAuth.validateRegistrationInput,
   validateProfileFields: NexovaAuth.validateProfileFields,
+  validateNewPassword: NexovaAuth.validateNewPassword,
   createAuthSession: () => fakeSession(false),
 };
 

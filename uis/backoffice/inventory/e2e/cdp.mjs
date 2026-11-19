@@ -57,6 +57,9 @@ export async function launchChrome(chromePath, port) {
     networkErrors,
     evaluate,
     async goto(url) { await send('Page.navigate', { url }); await sleep(300); },
+    /** Emulate a viewport (e.g. a phone) until reset with clearViewport(). */
+    async setViewport(width, height, mobile = false) { await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: mobile ? 2 : 1, mobile }); },
+    async clearViewport() { await send('Emulation.clearDeviceMetricsOverride'); },
     async waitFor(expression, timeout = 15000) {
       const end = Date.now() + timeout;
       for (;;) {

@@ -5,6 +5,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NexovaAuth = exports.PASSWORD_LIMITS = exports.PROFILE_LIMITS = exports.AuthError = exports.TOKEN_STORAGE_KEY = void 0;
 exports.validateLoginInput = validateLoginInput;
 exports.validateRegistrationInput = validateRegistrationInput;
+exports.validateNewPassword = validateNewPassword;
 exports.validateProfileFields = validateProfileFields;
 exports.getTokenExpiration = getTokenExpiration;
 exports.isTokenExpired = isTokenExpired;
@@ -37,6 +38,7 @@ exports.AuthError = AuthError;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 exports.PROFILE_LIMITS = { name: 200, phone: 50, address: 500 };
 exports.PASSWORD_LIMITS = { min: 8, max: 128 };
+const RESET_LINK_INVALID = 'El enlace para restablecer la contraseña no es válido, ya se usó o ha caducado.';
 const UNREACHABLE = 'No se pudo conectar con la API de Nexova. Comprueba tu conexión e inténtalo de nuevo.';
 function validateLoginInput(username, password) {
     if (typeof username !== 'string' || !username.trim())
@@ -64,6 +66,24 @@ function validateRegistrationInput(input) {
     Object.assign(errors, validateProfileFields(input));
     return errors;
 }
+/**
+ * AUTH-03: new password + confirmation, mirroring the API policy (8–128 characters).
+ * Returns field errors keyed `new_password` / `confirm_password`.
+ */
+function validateNewPassword(password, confirmation) {
+    const errors = {};
+    const value = typeof password === 'string' ? password : '';
+    if (!value)
+        errors.new_password = 'Introduce la nueva contraseña.';
+    else if (value.length < exports.PASSWORD_LIMITS.min || value.length > exports.PASSWORD_LIMITS.max) {
+        errors.new_password = `La contraseña debe tener entre ${exports.PASSWORD_LIMITS.min} y ${exports.PASSWORD_LIMITS.max} caracteres.`;
+    }
+    if (typeof confirmation !== 'string' || !confirmation)
+        errors.confirm_password = 'Repite la nueva contraseña.';
+    else if (value && confirmation !== value)
+        errors.confirm_password = 'Las contraseñas no coinciden.';
+    return errors;
+}
 /** Mirrors services/api ProfileFields (all optional, trimmed, max lengths). */
 function validateProfileFields(input) {
     const errors = {};
@@ -78,6 +98,7 @@ function validateProfileFields(input) {
 const FIELD_MESSAGES = {
     email: 'Introduce un correo electrónico válido.',
     password: `La contraseña debe tener entre ${exports.PASSWORD_LIMITS.min} y ${exports.PASSWORD_LIMITS.max} caracteres.`,
+    new_password: `La contraseña debe tener entre ${exports.PASSWORD_LIMITS.min} y ${exports.PASSWORD_LIMITS.max} caracteres.`,
     name: `Máximo ${exports.PROFILE_LIMITS.name} caracteres.`,
     phone: `Máximo ${exports.PROFILE_LIMITS.phone} caracteres.`,
     address: `Máximo ${exports.PROFILE_LIMITS.address} caracteres.`,
@@ -359,6 +380,42 @@ function createAuthSession(options) {
                 throw new AuthError(error instanceof AuthError ? error.status : 0, `Tu cuenta se creó, pero no se pudo iniciar sesión automáticamente: ${error.message} Inicia sesión manualmente.`, {}, 'REGISTERED_LOGIN_FAILED');
             }
         },
+        /**
+         * AUTH-03: POST /auth/forgot-password. The API answers 200 whether or not the address exists, so a
+         * resolved promise only means "request accepted"; callers must show a generic confirmation.
+         */
+        async requestPasswordReset(email) {
+            const trimmed = typeof email === 'string' ? email.trim() : '';
+            if (!EMAIL_PATTERN.test(trimmed)) {
+                throw new AuthError(422, 'Introduce un correo electrónico válido.', { email: 'Introduce un correo electrónico válido.' });
+            }
+            const response = await send('/auth/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ email: trimmed }),
+            });
+            if (response.status === 429)
+                throw new AuthError(429, 'Has hecho demasiadas solicitudes. Espera un rato e inténtalo de nuevo.');
+            if (!response.ok)
+                throw await responseError(response, 'No se pudo enviar la solicitud');
+        },
+        /** AUTH-03: POST /auth/reset-password. HTTP 400 = invalid, expired or already-used link. */
+        async resetPassword(token, newPassword) {
+            if (!token)
+                throw new AuthError(400, RESET_LINK_INVALID, {}, 'INVALID_RESET_TOKEN');
+            const fieldErrors = validateNewPassword(newPassword, newPassword);
+            if (Object.keys(fieldErrors).length)
+                throw new AuthError(422, 'Revisa los campos marcados.', fieldErrors);
+            const response = await send('/auth/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ token, new_password: newPassword }),
+            });
+            if (response.status === 400)
+                throw new AuthError(400, RESET_LINK_INVALID, {}, 'INVALID_RESET_TOKEN');
+            if (!response.ok)
+                throw await responseError(response, 'No se pudo restablecer la contraseña');
+        },
         /** Removes the token from storage and memory. */
         logout() { clear(); },
     };
@@ -370,6 +427,7 @@ exports.NexovaAuth = {
     validateLoginInput,
     validateRegistrationInput,
     validateProfileFields,
+    validateNewPassword,
     getTokenExpiration,
     isTokenExpired,
     createTokenStore,

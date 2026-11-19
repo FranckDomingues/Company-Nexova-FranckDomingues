@@ -39,6 +39,14 @@ export function createAuthBackend(options: { role?: string } = {}) {
   const seed = addUser(EMAIL, PASSWORD, { name: 'Ana Pérez', phone: '+34 600 111 222', address: 'Calle Colón 1, Valencia' });
   const validToken = issue(seed);
   const overrides: Record<string, (call: Call) => Reply | Promise<Reply>> = {};
+  /** AUTH-03 reset links: raw token → state (the real API stores only a hash; irrelevant for the UI). */
+  const resetTokens = new Map<string, { email: string; used: boolean; expired: boolean }>();
+  const forgotRequests: string[] = [];
+  const issueReset = (email = EMAIL, expired = false) => {
+    const token = `reset-${resetTokens.size}-${Math.random().toString(36).slice(2)}`;
+    resetTokens.set(token, { email, used: false, expired });
+    return token;
+  };
 
   const bearerUser = (call: Call): User | undefined => {
     const header = call.headers.Authorization ?? '';
@@ -73,12 +81,35 @@ export function createAuthBackend(options: { role?: string } = {}) {
         Object.assign(user.profile, { name: body.name ?? null, phone: body.phone ?? null, address: body.address ?? null });
         return { body: user.profile };
       }
+      case 'POST /auth/forgot-password': {
+        const email = String(body.email ?? '');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: 422, body: { detail: [{ loc: ['body', 'email'], msg: 'value is not a valid email address' }] } };
+        forgotRequests.push(email);
+        if (users.has(email.toLowerCase())) issueReset(email.toLowerCase());
+        return { body: { detail: 'If that address is registered, a password reset link has been sent.' } };
+      }
+      case 'POST /auth/reset-password': {
+        const entry = resetTokens.get(String(body.token ?? ''));
+        if (String(body.new_password ?? '').length < 8) return { status: 422, body: { detail: [{ loc: ['body', 'new_password'], msg: 'String should have at least 8 characters' }] } };
+        if (!entry || entry.used || entry.expired) return { status: 400, body: { detail: 'Invalid or expired reset token' } };
+        entry.used = true;
+        users.get(entry.email)!.password = String(body.new_password);
+        return { body: { detail: 'Password updated' } };
+      }
+      case 'POST /auth/change-password': {
+        const user = bearerUser(call);
+        if (!user) return unauthorized;
+        if (body.current_password !== user.password) return { status: 400, body: { detail: 'Current password is incorrect' } };
+        if (body.current_password === body.new_password) return { status: 400, body: { detail: 'New password must be different from the current password' } };
+        user.password = String(body.new_password);
+        return { body: { detail: 'Password updated' } };
+      }
       case 'GET /inventory/products': return bearerUser(call) ? { body: ASSETS } : unauthorized;
       case 'GET /inventory/orders': return bearerUser(call) ? { body: ORDERS } : unauthorized;
       default: return { status: 404, body: { detail: 'Not Found' } };
     }
   };
-  return { handler, overrides, users, tokens, validToken, revoke: (token: string) => tokens.delete(token) };
+  return { handler, overrides, users, tokens, validToken, revoke: (token: string) => tokens.delete(token), resetTokens, issueReset, forgotRequests };
 }
 
 /** The real NexovaAuth session, wired to the shared fetch mock (no fake session). */

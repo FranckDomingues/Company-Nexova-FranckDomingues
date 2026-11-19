@@ -173,3 +173,55 @@ live('AUTH-02 live auth flows (FastAPI, real JWTs, no mocks)', () => {
     expect(unauthorized).toHaveBeenCalledTimes(1);
   });
 });
+
+const MAIL = process.env.INVENTORY_E2E_MAIL_CAPTURE_URL;
+const liveMail = API && MAIL ? describe : describe.skip;
+
+/** Latest email captured by the E2E harness's Resend-compatible server for `to` (SIMULATED provider). */
+async function latestResetLink(to: string): Promise<string> {
+  for (let i = 0; i < 50; i++) {
+    const mails = await (await fetch(`${MAIL}/__captured`)).json() as { to: string[]; text: string }[];
+    const mail = [...mails].reverse().find(m => m.to.includes(to));
+    const link = mail?.text.match(/https?:\/\/\S+\/backoffice\/reset-password\?token=[\w-]+/)?.[0];
+    if (link) return link;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error('no reset email captured');
+}
+
+liveMail('AUTH-03 live password flows (real FastAPI + real Resend adapter → local capture server)', () => {
+  const unique = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const email = `auth03-${unique}@nexova.example`;
+  const first = `first-${unique}-pw`;
+  const second = `second-${unique}-pw`;
+  const third = `third-${unique}-pw`;
+  beforeAll(async () => {
+    const response = await fetch(`${API}/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: first }) });
+    expect(response.status).toBe(201);
+  });
+  beforeEach(() => window.localStorage.clear());
+
+  it('forgot → emailed link → reset with NexovaAuth; reuse rejected; credentials swapped', async () => {
+    const session = realAuth.createAuthSession({ apiBase: API! });
+    await session.requestPasswordReset(email);
+    const token = new URL(await latestResetLink(email)).searchParams.get('token')!;
+    await session.resetPassword(token, second);
+    await expect(session.resetPassword(token, third)).rejects.toMatchObject({ status: 400, code: 'INVALID_RESET_TOKEN' });
+    await expect(session.login({ username: email, password: first })).rejects.toMatchObject({ status: 401 });
+    await expect(session.login({ username: email, password: second })).resolves.toMatchObject({ email });
+  });
+
+  it('unknown address: same success path for the client (no enumeration)', async () => {
+    const session = realAuth.createAuthSession({ apiBase: API! });
+    await expect(session.requestPasswordReset(`ghost-${unique}@nexova.example`)).resolves.toBeUndefined();
+  });
+
+  it('change-password through the shared Bearer client: wrong current → 400, then success', async () => {
+    const session = realAuth.createAuthSession({ apiBase: API! });
+    await session.login({ username: email, password: second });
+    const client = createAccountApi({ apiBase: API!, getAuthorizationHeader: () => session.getAuthorizationHeader() });
+    await expect(client.changePassword('not-the-password', third)).rejects.toMatchObject({ status: 400, message: 'Current password is incorrect' });
+    await expect(client.changePassword(second, third)).resolves.toEqual({ detail: 'Password updated' });
+    await expect(session.login({ username: email, password: third })).resolves.toMatchObject({ email });
+  });
+});

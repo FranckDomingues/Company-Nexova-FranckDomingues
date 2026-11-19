@@ -15,8 +15,12 @@ login, registration and profile views.
 | `/backoffice/account/profile` | Mi perfil: `GET /auth/me`, `PUT /profiles/me` (AUTH-02) |
 | `/backoffice/login` | Login (`POST /auth/login`); `?next=` returns to the requested route. Public, guest-only |
 | `/backoffice/register` | Registration (`POST /users` → `POST /auth/login`). Public, guest-only |
+| `/backoffice/forgot-password` | Request a reset link (`POST /auth/forgot-password`), generic confirmation. Public (AUTH-03) |
+| `/backoffice/reset-password?token=…` | Set a new password (`POST /auth/reset-password`) → `/login`. Public (AUTH-03) |
+| `/backoffice/account/change-password` | Change password (`POST /auth/change-password`, Bearer). Protected (AUTH-03) |
 
-`/login`, `/register` and `/account/profile` redirect to the routes above. Every other route is protected by
+`/login`, `/register`, `/account/profile`, `/forgot-password`, `/reset-password` and `/account/change-password`
+redirect to the routes above. Every other route is protected by
 the client-side guard in `src/app.ts`, which checks for a token and validates it with `GET /auth/me`. See
 [`docs/evidence/AUTH-02-ROUTE-MATRIX.md`](../../../docs/evidence/AUTH-02-ROUTE-MATRIX.md).
 
@@ -47,6 +51,8 @@ npm run typecheck && npm run lint && npm test   # unit/component tests (mocked f
 npm run build                                  # emits dist/ + ../suppliers/dist/auth-session.js (committed)
 npm run e2e                                    # real API + PostgreSQL (Docker) + headless Chrome
 npm run e2e:auth                               # same run, evidence to docs/evidence/auth-02/
+npm run e2e:password                           # same run + AUTH-03, evidence to docs/evidence/auth-03/
+                                               # (E2E_RESEND_TO=<resend account email> for a real Resend send)
 ```
 
 `npm run e2e` starts a disposable PostgreSQL 16 container (TLS), the real FastAPI app with a temporary

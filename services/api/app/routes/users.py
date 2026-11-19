@@ -15,6 +15,10 @@ from app.database import get_profiles_table
 router = APIRouter(tags=["Users"])
 ProfileTable = Annotated[Table, Depends(get_profiles_table)]
 Roles = Literal["admin", "manager", "user"]
+# Single password policy for registration, user updates, reset and change (AUTH-03 reuses it).
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_MAX_LENGTH = 128
+Password = Annotated[SecretStr, Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)]
 
 
 class ProfileFields(BaseModel):
@@ -33,7 +37,7 @@ class ProfileFields(BaseModel):
 
 class UserRegistration(ProfileFields):
     email: EmailStr
-    password: SecretStr = Field(min_length=8, max_length=128)
+    password: Password
     # Accepted to validate legacy clients' role field, but never applied during signup.
     role: Roles | None = None
     is_active: bool | None = None
@@ -42,7 +46,7 @@ class UserRegistration(ProfileFields):
 class UserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: EmailStr | None = None
-    password: SecretStr | None = Field(default=None, min_length=8, max_length=128)
+    password: Password | None = None
     role: Roles | None = None
     is_active: bool | None = None
     name: str | None = Field(default=None, max_length=200)

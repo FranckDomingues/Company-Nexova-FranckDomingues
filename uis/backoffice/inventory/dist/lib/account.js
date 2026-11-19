@@ -10,5 +10,8 @@ export function createAccountApi(options) {
         updateProfile: update => request('PUT', '/profiles/me', {
             name: update.name, phone: update.phone, address: update.address,
         }),
+        changePassword: (currentPassword, newPassword) => request('POST', '/auth/change-password', {
+            current_password: currentPassword, new_password: newPassword,
+        }),
     };
 }

@@ -22,6 +22,27 @@ The default TinyDB JSON file is `services/api/data/suppliers.json` (ignored by G
 
 Use `Authorization: Bearer <access_token>`. Passwords are bcrypt-hashed. JWTs are stateless, signed with HS256 and resolved against active TinyDB users.
 
+## Password recovery and change (AUTH-03)
+
+| Endpoint | Auth | Behaviour |
+|---|---|---|
+| `POST /auth/forgot-password` `{email}` | none | Always `200` with the same body. For an active registered account it stores a single-use reset token (SHA-256 hash only) and emails a link to `<FRONTEND_BASE_URL>/backoffice/reset-password?token=…`. Rate limited per email (silently) and per client IP (`429`). |
+| `POST /auth/reset-password` `{token, new_password}` | none | Validates the token (exists, unused, not expired, issued after the last password change). On success it hashes the new password, consumes the token and revokes the user's other links. Returns `400` for invalid, expired or used tokens. |
+| `POST /auth/change-password` `{current_password, new_password}` | Bearer | `401` without a valid session; `400` if the current password is wrong. |
+
+Email is sent through Resend (`app/mailer.py`). Configure it with environment variables only (see `.env.example`):
+
+| Variable | Purpose |
+|---|---|
+| `RESEND_API_KEY` | Resend API key. Without it the API answers generically and sends nothing. **Never commit it.** |
+| `EMAIL_FROM` | Sender (default `Nexova <onboarding@resend.dev>`, Resend's testing sender, which only delivers to the Resend account owner's address) |
+| `RESEND_API_BASE_URL` | Default `https://api.resend.com` |
+| `FRONTEND_BASE_URL` | Origin used in reset links (default `http://127.0.0.1:5500`) |
+| `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES` | Link lifetime, 15–60 (default 30) |
+| `PASSWORD_RESET_MAX_PER_EMAIL_PER_HOUR` / `PASSWORD_RESET_MAX_PER_IP_PER_HOUR` | Rate limits (defaults 3 / 20) |
+
+Audit events (`password_audit_events` TinyDB table) record timestamp, IP, user agent, user id or a keyed HMAC of the email, and outcome. They never record passwords, raw tokens or email addresses. Details: `docs/evidence/AUTH-03-SECURITY-REPORT.md`.
+
 ## Supplier API
 
 - `POST /suppliers` — create; ID and `updated_at` are server-generated.

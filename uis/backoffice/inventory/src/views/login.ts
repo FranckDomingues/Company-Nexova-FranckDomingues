@@ -15,6 +15,8 @@ export function renderLogin(ctx: ViewContext): void {
       h('input', { name: 'username', type: 'email', autocomplete: 'username', required: true, className: UI.input })),
     h('label', { className: UI.label }, 'Contraseña',
       h('input', { name: 'password', type: 'password', autocomplete: 'current-password', required: true, className: UI.input })),
+    h('p', { className: 'text-right text-sm' },
+      h('a', { id: 'forgot-password-link', href: PATHS.forgotPassword, 'data-link': true, className: 'font-medium text-sky-800 underline' }, '¿Olvidaste tu contraseña?')),
     error,
     submit,
   );
@@ -49,7 +51,10 @@ export function renderLogin(ctx: ViewContext): void {
       'Tu sesión no es válida o ha caducado. La última operación no se completó: inicia sesión de nuevo y vuelve a intentarlo.')
     : reason === 'logout'
       ? h('p', { role: 'status', className: `mt-4 ${UI.success}`, dataset: { state: 'logged-out' } }, 'Has cerrado sesión correctamente.')
-      : null;
+      : reason === 'password-reset'
+        ? h('p', { role: 'status', className: `mt-4 ${UI.success}`, dataset: { state: 'password-reset' } },
+          'Tu contraseña se ha restablecido. Inicia sesión con la nueva contraseña.')
+        : null;
   const next = ctx.params.get('next');
   const registerHref = next ? `${PATHS.register}?next=${encodeURIComponent(next)}` : PATHS.register;
   ctx.root.append(h('section', { id: 'login-gate', className: `mx-auto max-w-md p-6 ${UI.card}`, 'aria-labelledby': 'login-title' },

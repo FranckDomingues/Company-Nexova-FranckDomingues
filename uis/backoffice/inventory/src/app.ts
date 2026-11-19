@@ -8,8 +8,11 @@ import { renderInbound } from './views/inbound.js';
 import { renderLogin } from './views/login.js';
 import { renderOutbound } from './views/outbound.js';
 import { renderProducts } from './views/products.js';
+import { renderChangePassword } from './views/change-password.js';
+import { renderForgotPassword } from './views/forgot-password.js';
 import { renderProfile } from './views/profile.js';
 import { renderRegister } from './views/register.js';
+import { renderResetPassword } from './views/reset-password.js';
 
 interface Route { view: View; title: string }
 
@@ -20,6 +23,7 @@ export const PROTECTED_ROUTES: Record<string, Route> = {
   [PATHS.outbound]: { view: renderOutbound, title: 'Salida de activos · Inventario' },
   [PATHS.orders]: { view: renderHistory, title: 'Historial de órdenes · Inventario' },
   [PATHS.profile]: { view: renderProfile, title: 'Mi perfil' },
+  [PATHS.changePassword]: { view: renderChangePassword, title: 'Cambiar contraseña' },
 };
 
 /** Guest-only views: an already valid session is sent on to its destination instead. */
@@ -29,13 +33,22 @@ export const GUEST_ROUTES: Record<string, Route> = {
 };
 
 /**
+ * AUTH-03 public views: reachable with or without a session (a signed-in user may open a reset link),
+ * never verified, never showing private chrome.
+ */
+export const PUBLIC_ROUTES: Record<string, Route> = {
+  [PATHS.forgotPassword]: { view: renderForgotPassword, title: 'Recuperar contraseña' },
+  [PATHS.resetPassword]: { view: renderResetPassword, title: 'Restablecer contraseña' },
+};
+
+/**
  * Post-login destinations are restricted to private backoffice pages on this origin (no open redirects):
  * the SPA's protected routes and the supplier directory page.
  */
 export function safeNextPath(next: string | null): string {
   if (!next || !next.startsWith('/') || next.startsWith('//') || next.includes('\\')) return PATHS.products;
   const pathname = next.split(/[?#]/)[0];
-  if (pathname.startsWith('/backoffice/inventory/') || pathname === PATHS.profile ||
+  if (pathname.startsWith('/backoffice/inventory/') || pathname === PATHS.profile || pathname === PATHS.changePassword ||
       pathname === PATHS.suppliers || pathname === '/backoffice/index.html') return next;
   return PATHS.products;
 }
@@ -141,6 +154,14 @@ export function createApp(deps: AppDeps) {
     const seq = ++renderSeq;
     const path = currentPath();
     const params = new URLSearchParams(win.location.search);
+
+    const open = PUBLIC_ROUTES[path];
+    if (open) {
+      updateChrome(path, false);
+      root.replaceChildren();
+      win.document.title = `${open.title} · Nexova Backoffice`;
+      return open.view(context(params));
+    }
 
     const guest = GUEST_ROUTES[path];
     if (guest) {

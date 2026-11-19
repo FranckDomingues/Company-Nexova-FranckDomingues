@@ -38,6 +38,9 @@ export interface AuthSession {
   verify(options?: { force?: boolean }): Promise<AuthAccount | null>;
   login(input: { username: string; password: string }): Promise<unknown>;
   register(input: RegistrationInput): Promise<unknown>;
+  /** AUTH-03 (unauthenticated): POST /auth/forgot-password and POST /auth/reset-password. */
+  requestPasswordReset(email: string): Promise<void>;
+  resetPassword(token: string, newPassword: string): Promise<void>;
   logout(): void;
 }
 
@@ -46,6 +49,7 @@ export interface NexovaAuthModule {
   validateLoginInput(username: unknown, password: unknown): string | null;
   validateRegistrationInput(input: Partial<RegistrationInput>): Record<string, string>;
   validateProfileFields(input: { name?: string | null; phone?: string | null; address?: string | null }): Record<string, string>;
+  validateNewPassword(password: unknown, confirmation: unknown): Record<string, string>;
   createAuthSession(options: { apiBase: string }): AuthSession;
 }
 

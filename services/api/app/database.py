@@ -43,3 +43,13 @@ def get_users_table() -> Table:
 
 def get_profiles_table() -> Table:
     return get_database().table("profiles")
+
+
+def get_password_resets_table() -> Table:
+    """AUTH-03: one row per reset request (hashed token, expiry, single-use marker)."""
+    return get_database().table("password_resets")
+
+
+def get_password_audit_table() -> Table:
+    """AUTH-03 EXTRA-03: password recovery/change audit events (no passwords, no raw tokens)."""
+    return get_database().table("password_audit_events")

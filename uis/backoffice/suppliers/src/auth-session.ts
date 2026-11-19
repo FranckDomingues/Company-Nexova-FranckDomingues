@@ -63,6 +63,7 @@ export class AuthError extends Error {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const PROFILE_LIMITS = { name: 200, phone: 50, address: 500 } as const;
 export const PASSWORD_LIMITS = { min: 8, max: 128 } as const;
+const RESET_LINK_INVALID = 'El enlace para restablecer la contraseña no es válido, ya se usó o ha caducado.';
 const UNREACHABLE = 'No se pudo conectar con la API de Nexova. Comprueba tu conexión e inténtalo de nuevo.';
 
 export function validateLoginInput(username: unknown, password: unknown): string | null {
@@ -87,6 +88,22 @@ export function validateRegistrationInput(input: Partial<RegistrationInput>): Re
   return errors;
 }
 
+/**
+ * AUTH-03: new password + confirmation, mirroring the API policy (8–128 characters).
+ * Returns field errors keyed `new_password` / `confirm_password`.
+ */
+export function validateNewPassword(password: unknown, confirmation: unknown): Record<string, string> {
+  const errors: Record<string, string> = {};
+  const value = typeof password === 'string' ? password : '';
+  if (!value) errors.new_password = 'Introduce la nueva contraseña.';
+  else if (value.length < PASSWORD_LIMITS.min || value.length > PASSWORD_LIMITS.max) {
+    errors.new_password = `La contraseña debe tener entre ${PASSWORD_LIMITS.min} y ${PASSWORD_LIMITS.max} caracteres.`;
+  }
+  if (typeof confirmation !== 'string' || !confirmation) errors.confirm_password = 'Repite la nueva contraseña.';
+  else if (value && confirmation !== value) errors.confirm_password = 'Las contraseñas no coinciden.';
+  return errors;
+}
+
 /** Mirrors services/api ProfileFields (all optional, trimmed, max lengths). */
 export function validateProfileFields(input: { name?: string | null; phone?: string | null; address?: string | null }): Record<string, string> {
   const errors: Record<string, string> = {};
@@ -101,6 +118,7 @@ export function validateProfileFields(input: { name?: string | null; phone?: str
 const FIELD_MESSAGES: Record<string, string> = {
   email: 'Introduce un correo electrónico válido.',
   password: `La contraseña debe tener entre ${PASSWORD_LIMITS.min} y ${PASSWORD_LIMITS.max} caracteres.`,
+  new_password: `La contraseña debe tener entre ${PASSWORD_LIMITS.min} y ${PASSWORD_LIMITS.max} caracteres.`,
   name: `Máximo ${PROFILE_LIMITS.name} caracteres.`,
   phone: `Máximo ${PROFILE_LIMITS.phone} caracteres.`,
   address: `Máximo ${PROFILE_LIMITS.address} caracteres.`,
@@ -348,6 +366,38 @@ export function createAuthSession(options: AuthSessionOptions) {
       }
     },
 
+    /**
+     * AUTH-03: POST /auth/forgot-password. The API answers 200 whether or not the address exists, so a
+     * resolved promise only means "request accepted"; callers must show a generic confirmation.
+     */
+    async requestPasswordReset(email: string): Promise<void> {
+      const trimmed = typeof email === 'string' ? email.trim() : '';
+      if (!EMAIL_PATTERN.test(trimmed)) {
+        throw new AuthError(422, 'Introduce un correo electrónico válido.', { email: 'Introduce un correo electrónico válido.' });
+      }
+      const response = await send('/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (response.status === 429) throw new AuthError(429, 'Has hecho demasiadas solicitudes. Espera un rato e inténtalo de nuevo.');
+      if (!response.ok) throw await responseError(response, 'No se pudo enviar la solicitud');
+    },
+
+    /** AUTH-03: POST /auth/reset-password. HTTP 400 = invalid, expired or already-used link. */
+    async resetPassword(token: string, newPassword: string): Promise<void> {
+      if (!token) throw new AuthError(400, RESET_LINK_INVALID, {}, 'INVALID_RESET_TOKEN');
+      const fieldErrors = validateNewPassword(newPassword, newPassword);
+      if (Object.keys(fieldErrors).length) throw new AuthError(422, 'Revisa los campos marcados.', fieldErrors);
+      const response = await send('/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ token, new_password: newPassword }),
+      });
+      if (response.status === 400) throw new AuthError(400, RESET_LINK_INVALID, {}, 'INVALID_RESET_TOKEN');
+      if (!response.ok) throw await responseError(response, 'No se pudo restablecer la contraseña');
+    },
+
     /** Removes the token from storage and memory. */
     logout(): void { clear(); },
   };
@@ -362,6 +412,7 @@ export const NexovaAuth = {
   validateLoginInput,
   validateRegistrationInput,
   validateProfileFields,
+  validateNewPassword,
   getTokenExpiration,
   isTokenExpired,
   createTokenStore,

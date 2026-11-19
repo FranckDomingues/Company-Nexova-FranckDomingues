@@ -1,0 +1,4 @@
+# Secrets: never commit environment files (AUTH-03). Templates stay tracked.
+.env
+.env.*
+!.env.example
