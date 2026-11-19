@@ -1,0 +1,107 @@
+{
+  "date": "2026-11-19T02:36:00.669Z",
+  "passed": 20,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "Disposable PostgreSQL 16 container with TLS is ready",
+      "status": "PASS",
+      "detail": "127.0.0.1:59452"
+    },
+    {
+      "name": "FastAPI started against the disposable database (schema created)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Briefing seed created via API (NXV-IT-001=12, NXV-PER-001=17)",
+      "status": "PASS",
+      "detail": "{\"NXV-IT-001\":12,\"NXV-IT-002\":8,\"NXV-PER-001\":17,\"NXV-PER-002\":0,\"NXV-OFF-001\":0,\"NXV-TRN-001\":0}"
+    },
+    {
+      "name": "Rows exist only in the disposable database",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Jest live API integration suite",
+      "status": "PASS",
+      "detail": "Tests: 5 passed, 5 total"
+    },
+    {
+      "name": "Browser: unauthenticated /backoffice/inventory/products redirects to login",
+      "status": "PASS",
+      "detail": "/backoffice/login?next=%2Fbackoffice%2Finventory%2Fproducts"
+    },
+    {
+      "name": "Browser: unauthenticated /backoffice/inventory/orders/inbound redirects to login",
+      "status": "PASS",
+      "detail": "/backoffice/login?next=%2Fbackoffice%2Finventory%2Forders%2Finbound"
+    },
+    {
+      "name": "Browser: unauthenticated /backoffice/inventory/orders/outbound redirects to login",
+      "status": "PASS",
+      "detail": "/backoffice/login?next=%2Fbackoffice%2Finventory%2Forders%2Foutbound"
+    },
+    {
+      "name": "Browser: unauthenticated /backoffice/inventory/orders redirects to login",
+      "status": "PASS",
+      "detail": "/backoffice/login?next=%2Fbackoffice%2Finventory%2Forders"
+    },
+    {
+      "name": "Browser: login returns to the requested route (history)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Browser: products page lists real assets with stock indicators matching the API",
+      "status": "PASS",
+      "detail": "NXV-IT-001:11:ok NXV-IT-002:8:ok NXV-PER-001:19:ok NXV-PER-002:0:out NXV-OFF-001:0:out NXV-TRN-001:0:out"
+    },
+    {
+      "name": "Browser: product action preselects asset in inbound form",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Browser: inbound order succeeds once (double submit guarded), stock +4 in backend, form reset",
+      "status": "PASS",
+      "detail": "19 -> 23"
+    },
+    {
+      "name": "Browser: outbound shows live stock and client warning when quantity exceeds it",
+      "status": "PASS",
+      "detail": "stock 23"
+    },
+    {
+      "name": "Browser: real HTTP 400 insufficient stock shown inline beside quantity",
+      "status": "PASS",
+      "detail": "Insufficient stock for asset 'Ratón ergonómico'. Available: 23, requested: 28."
+    },
+    {
+      "name": "Browser: outbound allocation succeeds, stock −2 in backend",
+      "status": "PASS",
+      "detail": "23 -> 21"
+    },
+    {
+      "name": "Browser: history matches API (all orders, both types, read-only, user_uuid, names)",
+      "status": "PASS",
+      "detail": "12 rows, 6 entradas, uuid d75ae549…, profile ok"
+    },
+    {
+      "name": "Browser: full reload drops the in-memory session (no token persisted in storage)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Browser: no uncaught JavaScript errors",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Browser: no unexpected failed network requests",
+      "status": "PASS",
+      "detail": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:59463/favicon.ico | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:59462/inventory/orders/outbound"
+    }
+  ]
+}
