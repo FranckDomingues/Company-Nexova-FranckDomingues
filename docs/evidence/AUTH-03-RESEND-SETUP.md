@@ -2,6 +2,12 @@
 
 This guide uses placeholders only. **Never** put a real key, password or reset token in this file, a commit, a terminal command, a screenshot or a chat message.
 
+## Current state (2026-11-19)
+
+- Real delivery verified: `E2E_REAL_RESEND=1 npm run e2e:password` → 56/56, Resend `last_event: delivered` (see [`AUTH-03-E2E-REPORT.md`](./AUTH-03-E2E-REPORT.md)).
+- `services/api/.env` now holds the **sending-only** key `nexova-api-sending`. The full-access key used for the test has been deleted.
+- To repeat the real E2E, create a new full-access key (step 1) and store it with `set-key --replace`.
+
 ## What Resend requires (docs, checked 2026-11-19)
 
 - Sending: `POST https://api.resend.com/emails` with `Authorization: Bearer <RESEND_API_KEY>` and a `User-Agent` header. Requests without a User-Agent are blocked with Cloudflare error 1010.

@@ -3,27 +3,31 @@
 - **Branch:** `feature/password-reset`
 - **Base:** `feature/auth-frontend` (PR #11), the top of the open PR stack. See *Dependency* below.
 - **Official source:** [`sources/auth-03-README.es.md`](./sources/auth-03-README.es.md), syllabus commit `784ef4a9c280e3000bbe79f53c6a15dbe1a43372`.
-- **Results:** recorded 2026-11-19 against the commit that contains this file. Commands and counts are in [`AUTH-03-TEST-REPORT.md`](./AUTH-03-TEST-REPORT.md); browser and API runs are in [`AUTH-03-E2E-REPORT.md`](./AUTH-03-E2E-REPORT.md).
+- **Results:** recorded 2026-11-19 against the commit that contains this file. The real Resend run was at 04:30–04:31 UTC.
+- **Resend setup:** [`AUTH-03-RESEND-SETUP.md`](./AUTH-03-RESEND-SETUP.md) (placeholders only). Commands and counts are in [`AUTH-03-TEST-REPORT.md`](./AUTH-03-TEST-REPORT.md); browser and API runs are in [`AUTH-03-E2E-REPORT.md`](./AUTH-03-E2E-REPORT.md).
 
 ## Summary
 
 | Block | Result |
 |---|---|
-| "Qué Debes Hacer" — Backend (DO-B1…B5) | 4 PASS, **1 BLOCKED** (DO-B4: real email sending) |
+| "Qué Debes Hacer" — Backend (DO-B1…B5) | 5/5 PASS |
 | "Qué Debes Hacer" — Frontend (DO-F1…F4) | 4/4 PASS |
 | "Qué Debes Hacer" — Seguridad (DO-S1…S3) | 3/3 PASS |
-| "Qué Vamos a Evaluar" (EVAL-01…12) | 11 PASS, **1 BLOCKED** (EVAL-01: real email) |
-| **Official total** | **22/24 PASS, 2 BLOCKED, 0 FAIL** |
+| "Qué Vamos a Evaluar" (EVAL-01…12) | 12/12 PASS |
+| **Official total** | **24/24 PASS** |
 | Optional extensions (EXTRA-01…03) | 3/3 PASS |
 
-**The only blocker is external: no Resend API key exists in this environment.** Everything else in the email path is implemented and verified: the real adapter was exercised against a Resend-compatible server in the E2E run, and against the real `api.resend.com`, which answered `401 validation_error` to a deliberately invalid key. Delivery to a real inbox has not been observed, so DO-B4 and EVAL-01 are reported as BLOCKED, not PASS. To close them, run the command in *Unblocking* below.
+**Real email delivery is verified.** On 2026-11-19 the E2E run was repeated against the real Resend service (`E2E_REAL_RESEND=1 npm run e2e:password`, [`auth-03/e2e-results-real-resend.json`](./auth-03/e2e-results-real-resend.json)): **56 passed, 0 failed**.
+- Resend accepted the reset emails and reported **`last_event: delivered`** for both emails that were read back: `01a1f212-794f-74a5-86e9-c38e6d05c6fa` at 04:30:59 UTC and `01a1f212-8b24-77e5-b9a3-91c9e544172b` at 04:31:04 UTC.
+- The run then followed the link **from the email Resend actually sent** through reset, old-password rejection, new-password login and token-reuse rejection.
 
 ## Labels
 
 - **Unit (backend):** pytest with an isolated TinyDB and an in-memory email outbox (`services/api/tests/test_password_reset.py`).
 - **Unit (frontend):** Jest + jsdom with the real `NexovaAuth` module, real views and a SIMULATED backend (`tests/password.test.ts`).
 - **Live:** real FastAPI, with the real Resend adapter talking to a local Resend-compatible capture server (`tests/live.integration.test.ts`, AUTH-03 block).
-- **E2E:** `npm run e2e:password`. Headless Chrome, real FastAPI, disposable PostgreSQL and TinyDB, and the real Resend adapter talking to a **simulated provider** (local Resend-compatible server). Results: [`auth-03/e2e-results.json`](./auth-03/e2e-results.json).
+- **E2E (simulated provider):** `npm run e2e:password`. Headless Chrome, real FastAPI, disposable PostgreSQL and TinyDB, and the real Resend adapter talking to a local Resend-compatible server. Results: [`auth-03/e2e-results.json`](./auth-03/e2e-results.json).
+- **E2E (REAL Resend):** `E2E_REAL_RESEND=1 npm run e2e:password`. The same flow, but email goes through `api.resend.com` to the Resend account owner's inbox. The run requires `last_event` delivered (or the later opened/clicked) before following the real link. Results: [`auth-03/e2e-results-real-resend.json`](./auth-03/e2e-results-real-resend.json). Message ids and timestamps are recorded; the recipient address is not.
 
 ## "Qué Debes Hacer" (12)
 
@@ -34,7 +38,7 @@
 | DO-B1 | `POST /auth/forgot-password` accepts `{email}`. If the user exists, it creates a token that expires in 15–60 min and emails the link. It always returns `200`. | `app/routes/password.py` `forgot_password`; `app/password_reset.py` `issue_reset_token` (256-bit `secrets.token_urlsafe(32)`, SHA-256 stored, `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES` limited to 15–60) | Unit: link and hash only, unknown email gives an identical response, inactive account, provider failure is still generic, 15/30/60 windows, out-of-range config rejected. E2E: UI request → email captured → link works; unknown email → identical 200 and no email | PASS |
 | DO-B2 | `POST /auth/reset-password` accepts `{token, new_password}` and validates signature, expiry and prior use. It hashes, updates and invalidates the token. It returns `400` for invalid, expired or used tokens. | `password_reset.reset_password` under a process lock: lookup by hash, `used_at`, `expires_at`, `password_changed_at` → bcrypt `hash_password` → token consumed, other links revoked, compensation on failure | Unit: success swaps credentials; reuse → 400; expiry → 400; forged → 400; weak password → 422 without consuming; 8 concurrent attempts → exactly 1 success; atomic rollback. Live and E2E: old password 401, new password 200, reuse 400, expired 400 | PASS |
 | DO-B3 | `POST /auth/change-password` accepts `{current_password, new_password}`, needs a valid `Authorization`, verifies the current password and returns `400` if it is wrong. | `routes/password.change_password` (`CurrentUser` dependency from AUTH-01); `password_reset.change_password` | Unit: 401 without or with an invalid token, 400 wrong current, success swaps credentials and revokes reset links, 422 policy, 400 identical password. E2E: 401 and 400 via API; browser success | PASS |
-| DO-B4 | Integrate a transactional email service; the email contains the link and reads well on mobile. | `app/mailer.py` `ResendEmailSender` (REST `POST /emails`, Bearer, User-Agent, timeout, typed errors) behind the `EmailSender` interface; `app/email_templates.py` (responsive HTML + text) | Unit: exact Resend request shape; 403 error mapped without leaking the key; unreachable → status 0. E2E: Resend-compatible server receives the request; email renders on a 390 px viewport. **Real Resend:** the endpoint is reachable and rejects an invalid key (401). **Delivery with a valid key has not been observed.** | **BLOCKED** (needs `RESEND_API_KEY`) |
+| DO-B4 | Integrate a transactional email service; the email contains the link and reads well on mobile. | `app/mailer.py` `ResendEmailSender` (REST `POST /emails`, Bearer, User-Agent, timeout, typed errors) behind the `EmailSender` interface; `app/email_templates.py` (responsive HTML + text) | Unit: exact Resend request shape; 403 error mapped without leaking the key; unreachable → status 0. E2E: Resend-compatible server receives the request; email renders on a 390 px viewport. **Real Resend E2E:** emails delivered (`last_event: delivered`, ids above) and the delivered link works end to end. The sending-only key used afterwards was also accepted (`01a1f213-10af-716f-be22-c8a8f9f8a556`) | PASS |
 | DO-B5 | The API key is stored in an environment variable, documented in the README or `.env.example`. | `RESEND_API_KEY` read in `mailer.get_email_sender()`. Documented in `services/api/.env.example` and `services/api/README.md`. `.env` is ignored by `services/api/.gitignore` and the new root `.gitignore` | Unit `test_provider_selection_from_environment`; secret scan (security report) | PASS |
 
 ### Frontend
@@ -58,7 +62,7 @@
 
 | ID | Official criterion | Evidence | Status |
 |---|---|---|---|
-| EVAL-01 | `POST /auth/forgot-password` sends a **real** email with the reset link to a registered address. | Verified up to the provider: the request reaches `api.resend.com` (invalid-key probe → 401), and the full flow works with a Resend-compatible server. No valid key is available, so no real email has been observed. | **BLOCKED** |
+| EVAL-01 | `POST /auth/forgot-password` sends a **real** email with the reset link to a registered address. | Real Resend E2E: the forgot form in Chrome triggers `POST /auth/forgot-password` → Resend message `01a1f212-794f-74a5-86e9-c38e6d05c6fa`, `last_event: delivered`. The link read back from that email opens `/backoffice/reset-password` and the reset succeeds. A second email (`01a1f212-8b24-77e5-b9a3-91c9e544172b`) was also delivered. | PASS |
 | EVAL-02 | It returns `200` for unregistered addresses without leaking information. | DO-S2 | PASS |
 | EVAL-03 | The token expires after the configured window and cannot be used afterwards. | Unit: windows of 15/30/60 min are checked at the boundary; a token 1 s past expiry → 400 and the password is unchanged; 10 s before expiry → OK. E2E: a 15 min window is configured, and an aged token → 400 | PASS |
 | EVAL-04 | `POST /auth/reset-password` updates the password and invalidates the token on success. | DO-B2 (`used_at` set, other links revoked, credentials swapped) | PASS |
@@ -84,12 +88,18 @@
 - The frontends are the existing HTML/TypeScript apps, not Next.js. Canonical routes use the `/backoffice/` prefix, and `/forgot-password`, `/reset-password` and `/account/change-password` redirect there with a 302 (query string kept, so emailed tokens survive).
 - Users already live in TinyDB, so reset tokens, rate-limit counters and audit events are TinyDB tables in the same file. No new database or dependency was added (Resend is called with the standard library).
 
-## Unblocking DO-B4 / EVAL-01
+## Real Resend verification and key hygiene (2026-11-19)
 
-1. Create a Resend account and a **full-access** API key. The harness reads the sent email back with `GET /emails/{id}`, which a sending-only key cannot do.
-2. Put `RESEND_API_KEY=<key>` in `services/api/.env` (git-ignored). Do not paste it into commands or chat.
-3. Run `cd uis/backoffice/inventory && E2E_RESEND_TO=<the Resend account's own email> npm run e2e:password`. With the `onboarding@resend.dev` sender, Resend only delivers to that address.
-4. The run writes `docs/evidence/auth-03/e2e-results-real-resend.json`, recording Resend's message id and `last_event`. It takes no screenshots in this mode, because your real address would appear on screen. Check that the email arrived in the inbox.
+1. The account owner created a **full-access** key named `nexova-auth03-e2e-full-access` and stored it with `scripts/configure_resend.py set-key` (hidden prompt → `services/api/.env`, mode 600, git-ignored). The recipient was stored with `set-recipient`. Neither value appears in commands, logs or evidence.
+2. `E2E_REAL_RESEND=1 npm run e2e:password` → **56/56 PASS**:
+   - the preflight confirmed the key has full access;
+   - the live provider-error test passed against `api.resend.com`;
+   - two emails were confirmed `delivered` and the real link flow worked.
+   The first attempt failed only because the harness required the literal `delivered`, and Resend already reported `opened` (the owner had opened the email). The check now accepts post-delivery events too.
+3. `scripts/configure_resend.py rotate-to-sending --delete-name nexova-auth03-e2e-full-access` created the sending-only key `nexova-api-sending`, stored it in `.env` and **deleted the full-access key** from the Resend account (`DELETE /api-keys/{id}` → success). Status: `permission: sending_access`.
+4. The sending-only key was then used to send through the real adapter, and Resend accepted it (`01a1f213-10af-716f-be22-c8a8f9f8a556`). A sending key can't read delivery status back, so this one is recorded as *accepted*.
+
+A future real E2E run needs a new full-access key; see the setup guide.
 
 ## Dependency
 

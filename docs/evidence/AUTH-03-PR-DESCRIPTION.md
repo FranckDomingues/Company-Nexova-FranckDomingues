@@ -4,12 +4,13 @@
 
 ### Estado
 
-**Criterios oficiales: 22/24 PASS, 2 BLOCKED, 0 FAIL. Extras: 3/3.** Los dos bloqueados (DO-B4 y EVAL-01, envío de un email *real*) dependen de una API key de Resend, que no está disponible en este entorno. Todo el camino del email está implementado y verificado:
+**Criterios oficiales: 24/24 PASS. Extras: 3/3.** El envío real está verificado con Resend:
 
-- El adaptador real habló con un servidor compatible con Resend durante el E2E.
-- Contra `api.resend.com`, una key inválida devolvió `401`.
+- `E2E_REAL_RESEND=1 npm run e2e:password` dio **56/56**.
+- Dos emails de restablecimiento quedaron con `last_event: delivered` (`01a1f212-794f-…`, `01a1f212-8b24-…`).
+- El enlace del email real funcionó de extremo a extremo: reset, contraseña antigua rechazada, nueva aceptada y reutilización rechazada.
 
-Falta observar una entrega real. Instrucciones para desbloquearlo: `docs/evidence/AUTH-03-E2E-REPORT.md`.
+Después se rotó la key de acceso total a una key de solo envío y la de acceso total se borró de la cuenta. Ninguna key, destinatario ni token aparece en el repositorio ni en las evidencias.
 
 ### Backend (`services/api`)
 
@@ -36,20 +37,22 @@ Falta observar una entrega real. Instrucciones para desbloquearlo: `docs/evidenc
 
 | Gate | Resultado |
 |---|---|
-| pytest backend | 92 passed (32 nuevos) |
+| pytest backend | 96 passed, 1 skip opt-in (37 nuevos, incluido el test contra la API real de Resend) |
 | Jest frontend | 142 passed, 0 failed (21 nuevos) |
 | Integración live (API real) | 14 passed |
 | E2E Chrome + API + PostgreSQL (proveedor de email simulado) | 56 passed, 0 failed (20 de AUTH-03) |
 | Lint, typecheck, build, `git diff --check` | OK |
 | Escaneo de secretos | limpio |
-| Envío real con Resend | **BLOCKED** (falta `RESEND_API_KEY`) |
+| **E2E con Resend real** | **56 passed, 0 failed**; 2 emails `delivered` |
+| Key de solo envío tras la rotación | aceptada por Resend |
 
 Evidencias:
 - `docs/evidence/AUTH-03-CHECKLIST.md` (24 criterios)
 - `docs/evidence/AUTH-03-TEST-REPORT.md`
 - `docs/evidence/AUTH-03-SECURITY-REPORT.md`
 - `docs/evidence/AUTH-03-E2E-REPORT.md`
-- `docs/evidence/auth-03/` (capturas y resultados)
+- `docs/evidence/AUTH-03-RESEND-SETUP.md` (configuración, solo con placeholders)
+- `docs/evidence/auth-03/` (capturas, `e2e-results.json` simulado y `e2e-results-real-resend.json` real)
 
 ### Limitaciones conocidas
 

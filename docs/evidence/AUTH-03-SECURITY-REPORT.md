@@ -35,6 +35,16 @@ Run over all tracked and new files with `git add -N .` and `git grep`:
 | Tracked `.env` files | none (`services/api/.env.example` only) |
 | `token=` values in `docs/evidence/auth-03/*.json, *.txt` | none; the email screenshot shows `TOKEN-REDACTADO-EN-EVIDENCIA` |
 
+## Resend key lifecycle (2026-11-19)
+
+| Step | Control |
+|---|---|
+| Creation | The account owner created the key in the Resend dashboard (login and MFA are theirs). No automation was used to sign in. |
+| Storage | `scripts/configure_resend.py set-key` reads the key at a hidden prompt, validates it with Resend, writes only the `RESEND_API_KEY` line of `services/api/.env` (mode 600) and refuses to overwrite an existing key without `--replace`. The E2E recipient is stored the same way (`set-recipient`). `services/api/.env` is git-ignored, and `git status` never listed it. |
+| Use | The harness reads the key and recipient from `.env` (`E2E_REAL_RESEND=1`), so neither appears in a command line or shell history. Results record Resend message ids and timestamps only. A scan after the run found no recipient address, key or token in any committed result file. No screenshots are taken in real mode. |
+| Least privilege | After verification, `rotate-to-sending` created the sending-only key `nexova-api-sending`, stored it in `.env` and deleted the full-access key `nexova-auth03-e2e-full-access` from the account (Resend confirmed the deletion). Current status: `permission: sending_access`. A test send with it was accepted (`01a1f213-10af-716f-be22-c8a8f9f8a556`). |
+| Errors | The opt-in test `tests/test_resend_live.py` (`RESEND_LIVE_TESTS=1`) calls `api.resend.com` with a deliberately invalid key. It checks for a typed `EmailDeliveryError` and that the key is absent from `str`, `repr` and captured logs. It passed standalone and inside the real E2E run. |
+
 ## Real-provider probe
 
-The real adapter was pointed at `https://api.resend.com` with a deliberately invalid key and Resend's documented test recipient `delivered@resend.dev`. Resend answered `status=401 reason=validation_error`, and the raised error did not contain the key. This proves that the request reaches Resend, passes Resend's User-Agent check (error 1010 otherwise) and that provider errors are handled. It does **not** prove delivery (see the checklist, BLOCKED items).
+The real adapter was pointed at `https://api.resend.com` with a deliberately invalid key and Resend's documented test recipient `delivered@resend.dev`. Resend answered `status=401 reason=validation_error`, and the raised error did not contain the key. This proves that the request reaches Resend, passes Resend's User-Agent check (error 1010 otherwise) and that provider errors are handled. On its own this does not prove delivery; the real E2E run does (see the checklist: 2 emails with `last_event: delivered`).

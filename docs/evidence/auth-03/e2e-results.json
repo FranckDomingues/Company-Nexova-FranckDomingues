@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-19T04:05:05.313Z",
+  "date": "2026-11-19T04:33:02.225Z",
   "emailProvider": "simulated (local Resend-compatible server)",
   "passed": 56,
   "failed": 0,
@@ -7,7 +7,7 @@
     {
       "name": "Disposable PostgreSQL 16 container with TLS is ready",
       "status": "PASS",
-      "detail": "127.0.0.1:56237"
+      "detail": "127.0.0.1:57268"
     },
     {
       "name": "FastAPI started against the disposable database (schema created)",
@@ -87,7 +87,7 @@
     {
       "name": "Browser: history matches API (all orders, both types, read-only, user_uuid, names)",
       "status": "PASS",
-      "detail": "12 rows, 6 entradas, uuid d7ae4b52…, profile ok"
+      "detail": "12 rows, 6 entradas, uuid 64e0fe2d…, profile ok"
     },
     {
       "name": "AUTH-02 Browser: full reload keeps the session (token in localStorage under nexova.auth.token, re-verified)",
@@ -102,7 +102,7 @@
     {
       "name": "AUTH-02 Browser: /backoffice/account/profile shows the real account from GET /auth/me",
       "status": "PASS",
-      "detail": "ops-e3debb18@nexova.example"
+      "detail": "ops-c2d90b25@nexova.example"
     },
     {
       "name": "AUTH-02 Browser: profile update persisted by PUT /profiles/me (verified via API)",
@@ -282,7 +282,7 @@
     {
       "name": "Browser: no unexpected failed network requests",
       "status": "PASS",
-      "detail": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:56240/favicon.ico | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:56239/inventory/orders/outbound | Failed to load resource: the server responded with a status of 403 (Forbidden) http://127.0.0.1:56239/suppliers | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:56239/auth/me | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:56239/auth/me | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:56239/auth/login | Failed to load resource: the server responded with a status of 409 (Conflict) http://127.0.0.1:56239/users | Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:56293/favicon.ico | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:56239/auth/reset-password | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:56239/auth/change-password"
+      "detail": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:57272/favicon.ico | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:57271/inventory/orders/outbound | Failed to load resource: the server responded with a status of 403 (Forbidden) http://127.0.0.1:57271/suppliers | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:57271/auth/me | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:57271/auth/me | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:57271/auth/login | Failed to load resource: the server responded with a status of 409 (Conflict) http://127.0.0.1:57271/users | Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:57321/favicon.ico | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:57271/auth/reset-password | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:57271/auth/change-password"
     }
   ]
 }

@@ -13,7 +13,7 @@
 | # | Step | How it was shown | Status |
 |---|---|---|---|
 | 1 | A registered test user requests recovery | Throwaway user created via `POST /users`. On `/login`, Chrome clicks "¿Olvidaste tu contraseña?", submits the form (twice, to test the guard) and sees the generic confirmation with the form disabled (`12-forgot-confirmation.png`). | PASS |
-| 2 | The **actual** email provider accepts and sends the message | Real adapter → simulated provider: one request with the correct shape, message id returned. Real Resend: reachable, invalid key rejected with 401. **No real send (no key).** | **BLOCKED** (simulated: PASS) |
+| 2 | The **actual** email provider accepts and sends the message | **REAL Resend run:** messages `01a1f212-794f-74a5-86e9-c38e6d05c6fa` and `01a1f212-8b24-77e5-b9a3-91c9e544172b`, both reported `delivered`. Simulated run: one correctly shaped request per submission. | PASS |
 | 3 | The reset link reaches the correct frontend page | Link from the captured email = `<frontend>/backoffice/reset-password?token=…`; Chrome opens it, the form appears and the token is removed from the address bar. The email is also rendered on a 390 px viewport (`13-reset-email-mobile.png`, token redacted). | PASS |
 | 4 | The user submits a new password | Mismatch is blocked first, then a matching pair is submitted. | PASS |
 | 5 | The reset succeeds | Redirected to `/backoffice/login?reason=password-reset` with the success message (`14-login-after-reset.png`). | PASS |
@@ -27,7 +27,29 @@ Additional E2E checks: an unknown email gets an identical 200 and no email is se
 
 **Expiry in E2E:** waiting 15 real minutes is impractical, so the harness moves the stored `expires_at` of a fresh token into the past in the throwaway TinyDB file. The same technique is used for roles and deactivation in AUTH-02. Exact boundary behaviour (just before and just after the window) is covered by the backend tests with a controlled clock.
 
-## Real Resend run (needed to close EVAL-01)
+## Real Resend run — RESULT (2026-11-19)
+
+`E2E_REAL_RESEND=1 npm run e2e:password` with a full-access key and recipient read from the git-ignored `services/api/.env` → **56 passed, 0 failed** ([`auth-03/e2e-results-real-resend.json`](./auth-03/e2e-results-real-resend.json), `"emailProvider": "resend (real)"`).
+
+| Check | Result |
+|---|---|
+| Preflight: key valid, full access (`GET /api-keys`) | HTTP 200 |
+| Real provider errors are typed and never contain the key (live pytest vs `api.resend.com`) | 1 passed |
+| 1. Resend accepts the request | message ids above |
+| 2. Email actually delivered | `last_event: delivered` for both emails read back (04:30:59 and 04:31:04 UTC) |
+| 3. Reset link correct | link in the delivered email = `<frontend>/backoffice/reset-password?token=…` and opens the form |
+| 4. Token accepted before expiry | reset succeeds and redirects to `/login` with the success message |
+| 5–6. New password works, old password fails | 200 / 401 |
+| 7. Token reuse fails | API 400; browser shows the error and the recovery link |
+| 8. Unknown email reveals nothing | identical HTTP 200 body |
+| 9. Delivery errors expose no secrets | live pytest above, plus the key/recipient scan of the evidence |
+| 10. Existing authentication still works | all Hito 5 and AUTH-02 checks in the same run pass (36), plus change-password |
+
+The run sends 3 real emails. Two are read back and verified; the third is the known-versus-unknown comparison. The recipient address, the key and every token are absent from the committed results, which were scanned after the run. No screenshots are taken in this mode. An earlier attempt the same morning failed only because the harness required the literal `delivered` while Resend already reported `opened`; see the test report.
+
+After verification the full-access key was **rotated**: the sending-only key `nexova-api-sending` is now in `.env`, the full-access key was deleted from the Resend account, and a test send with the new key was accepted (`01a1f213-10af-716f-be22-c8a8f9f8a556`).
+
+## Repeating the real run
 
 ### Provider requirements (checked against Resend's documentation, 2026-11-19)
 
@@ -45,11 +67,11 @@ cp -n .env.example .env        # if you do not have one yet; then edit it:
 #    EMAIL_FROM=Nexova <onboarding@resend.dev>
 cd ../../uis/backoffice/inventory
 npm ci && npm run build
-# 2. Real-provider E2E: the recipient must be your Resend account's email.
-E2E_RESEND_TO='<your-resend-account-email>' npm run e2e:password
+# 2. Real-provider E2E: key and recipient come from services/api/.env (see AUTH-03-RESEND-SETUP.md).
+E2E_REAL_RESEND=1 npm run e2e:password
 ```
 
-Expected output: `AUTH-03 Email: reset email accepted by the provider [REAL Resend] — message id <id>, last_event=<sent|delivered>`, and every other check PASS. The run sends 3 real emails (the request, the "known vs unknown" comparison, the expiry check) and skips the rate-limit check so it doesn't send more. Results go to `docs/evidence/auth-03/e2e-results-real-resend.json`. No screenshots are taken in this mode, because your real address would appear on screen (`E2E_REAL_SCREENSHOTS=1` overrides this). Finally, confirm in your inbox that the email arrived and the button opens `/backoffice/reset-password`.
+Expected output: `AUTH-03 Email: REAL Resend accepted AND delivered the reset email … — message id <id>, last_event=delivered`, and every other check PASS. The run sends 3 real emails (the request, the "known vs unknown" comparison, the expiry check) and skips the rate-limit check so it doesn't send more. Results go to `docs/evidence/auth-03/e2e-results-real-resend.json`. No screenshots are taken in this mode, because your real address would appear on screen (`E2E_REAL_SCREENSHOTS=1` overrides this). Finally, confirm in your inbox that the email arrived and the button opens `/backoffice/reset-password`.
 
 ## Manual reproduction for the professor (no Resend key needed)
 
@@ -81,4 +103,4 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST localhost:8000/auth/reset-passw
 curl -s -o /dev/null -w '%{http_code}\n' -X POST localhost:8000/auth/change-password -H 'Content-Type: application/json' -d '{"current_password":"x","new_password":"whatever-123"}'   # 401
 ```
 
-Automated suites: `cd services/api && uv run pytest -q` (92 passed), then `cd uis/backoffice/inventory && npm run lint && npm run typecheck && npm test` (142 passed, 14 skipped) and `npm run e2e:password` (56 passed). The E2E run needs Docker and Chrome.
+Automated suites: `cd services/api && uv run pytest -q` (96 passed, 1 opt-in skip), then `cd uis/backoffice/inventory && npm run lint && npm run typecheck && npm test` (142 passed, 14 skipped) and `npm run e2e:password` (56 passed). The E2E run needs Docker and Chrome.

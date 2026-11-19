@@ -61,6 +61,8 @@ const REAL_RESEND = Boolean(process.env.E2E_RESEND_API_KEY && process.env.E2E_RE
 const results = [];
 /** Real Resend deliveries (message id, last_event, created_at). Never the recipient or the token. */
 const realDeliveryLog = [];
+/** Resend events that prove delivery (opened/clicked can only follow a delivered message). */
+const DELIVERED_EVENTS = new Set(['delivered', 'opened', 'clicked']);
 const cleanups = [];
 
 function check(name, ok, detail = '') {
@@ -457,16 +459,17 @@ async function main() {
       if (ok) {
         let mail;
         if (REAL_RESEND) {
-          // Real delivery = Resend reports last_event "delivered" (not merely accepted). Up to ~2 minutes.
+          // Real delivery = Resend's latest event is "delivered" or a later one ("opened"/"clicked" only
+          // happen after delivery; last_event shows the most recent). Merely "sent" is not enough. ~2 minutes.
           for (let j = 0; j < 60; j++) {
             const r = await fetch(`https://api.resend.com/emails/${ok.provider_message_id}`, { headers: { Authorization: `Bearer ${process.env.E2E_RESEND_API_KEY}`, 'User-Agent': 'nexova-e2e/1.0' } });
             if (!r.ok) throw new Error(`Resend GET /emails/{id} -> ${r.status} (a full-access API key is required to read the sent email back)`);
             mail = await r.json();
             if (['bounced', 'complained', 'failed', 'suppressed'].includes(mail.last_event)) throw new Error(`Resend reports last_event=${mail.last_event} for ${ok.provider_message_id}`);
-            if (mail.last_event === 'delivered') break;
+            if (DELIVERED_EVENTS.has(mail.last_event)) break;
             await sleep(2000);
           }
-          if (mail?.last_event !== 'delivered') throw new Error(`Resend did not report delivery in time (last_event=${mail?.last_event})`);
+          if (!DELIVERED_EVENTS.has(mail?.last_event)) throw new Error(`Resend did not report delivery in time (last_event=${mail?.last_event})`);
           realDeliveries.push({ id: ok.provider_message_id, last_event: mail.last_event, created_at: mail.created_at });
         } else {
           mail = captured.find(c => c.id === ok.provider_message_id).body;
@@ -512,8 +515,8 @@ async function main() {
     await chrome.evaluate('document.querySelector("#forgot-form button").disabled && document.querySelector("#forgot-email").disabled && document.querySelector(\'[data-state="forgot-sent"]\').textContent.startsWith("Si esa dirección está registrada")'));
   await shot('12-forgot-confirmation.png');
   const mail = await fetchResetEmail(resetEmail, before);
-  check(REAL_RESEND ? 'AUTH-03 Email: REAL Resend accepted AND delivered the reset email (last_event=delivered)' : `AUTH-03 Email: reset email accepted by the provider [${providerLabel}]`,
-    Boolean(mail.id && mail.link) && (!REAL_RESEND || mail.lastEvent === 'delivered'),
+  check(REAL_RESEND ? 'AUTH-03 Email: REAL Resend accepted AND delivered the reset email (last_event delivered/opened/clicked)' : `AUTH-03 Email: reset email accepted by the provider [${providerLabel}]`,
+    Boolean(mail.id && mail.link) && (!REAL_RESEND || DELIVERED_EVENTS.has(mail.lastEvent)),
     `message id ${mail.id}${mail.lastEvent ? `, last_event=${mail.lastEvent}` : ''}`);
   if (!REAL_RESEND) {
     const request = captured[captured.length - 1];

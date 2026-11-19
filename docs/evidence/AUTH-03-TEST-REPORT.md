@@ -2,24 +2,26 @@
 
 - **Branch:** `feature/password-reset` (based on `feature/auth-frontend`). The commit is the one containing this file; see the PR.
 - **Environment:** macOS (Darwin 25.6), Python 3.11 via `uv`, Node 22, Docker 29.5.2, headless Google Chrome. Run on 2026-11-19.
-- **Labels:** *Simulated* means `fetch` or the email provider is replaced by a contract-faithful fake. *Real* means the real FastAPI app and real HTTP. No real email was delivered (no Resend key; see the checklist).
+- **Labels:** *Simulated* means `fetch` or the email provider is replaced by a contract-faithful fake. *Real* means the real FastAPI app and real HTTP. *REAL Resend* means email actually sent through `api.resend.com` and confirmed delivered.
 
 ## Commands and results
 
 | Gate | Command | Result |
 |---|---|---|
-| Backend tests | `cd services/api && uv run pytest -q` | **92 passed, 0 failed** (60 existing + 32 new in `tests/test_password_reset.py`) |
+| Backend tests | `cd services/api && uv run pytest -q` | **96 passed, 0 failed, 1 skipped** (60 existing + 32 `test_password_reset.py` + 4 `test_configure_resend.py`; the skip is the opt-in real-provider probe below) |
 | Frontend lint | `cd uis/backoffice/inventory && npm run lint` | PASS |
 | Frontend typecheck (app + tests) | `npm run typecheck` | PASS |
 | Build (`tsc` + NexovaAuth bundle) | `npm run build` | PASS; `dist/` matches the sources |
 | Frontend unit (simulated backend) | `npm test` | **142 passed, 0 failed**, 14 skipped (the live suite, run in the next row) |
 | Live API integration (real API; email to the capture server) | inside `npm run e2e:password` | **14 passed, 0 failed** (5 Hito 5 + 6 AUTH-02 + 3 AUTH-03) |
 | Browser E2E (real API + PostgreSQL + Chrome; simulated email provider) | `npm run e2e:password` | **56 passed, 0 failed** (36 earlier milestones + 20 AUTH-03) → [`auth-03/e2e-results.json`](./auth-03/e2e-results.json) |
-| Real Resend reachability probe | see the security report | Resend answered `401 validation_error` to an invalid key (expected) |
-| Real Resend delivery | `E2E_RESEND_TO=… npm run e2e:password` | **BLOCKED**: no `RESEND_API_KEY` available |
+| Real-provider error test | `RESEND_LIVE_TESTS=1 uv run pytest -m resend_live` (also run inside the real E2E) | **1 passed**: `api.resend.com` rejects an invalid key with a typed error, and the key never appears in errors or logs |
+| **Browser E2E with REAL Resend** | `E2E_REAL_RESEND=1 npm run e2e:password` (key and recipient read from the git-ignored `.env`) | **56 passed, 0 failed** → [`auth-03/e2e-results-real-resend.json`](./auth-03/e2e-results-real-resend.json). Live suite 11 passed and 3 skipped by design (those 3 read the local capture server) |
+| Real delivery | Resend `GET /emails/{id}` inside that run | `01a1f212-794f-74a5-86e9-c38e6d05c6fa` delivered (created 04:30:59 UTC); `01a1f212-8b24-77e5-b9a3-91c9e544172b` delivered (04:31:04 UTC) |
+| Sending-only key after rotation | real adapter, one email | accepted by Resend: `01a1f213-10af-716f-be22-c8a8f9f8a556` |
 | Whitespace | `git diff --check` | clean |
 
-New AUTH-03 tests: backend 32, frontend unit 21 (`tests/password.test.ts`), live 3, E2E 20. Existing tests that needed updating: `routes.test.ts` (the exact protected-route set now includes `/backoffice/account/change-password`) and the test fakes in `helpers.ts`.
+New AUTH-03 tests: backend 37 (32 flow + 4 setup helper + 1 opt-in real-provider probe), frontend unit 21 (`tests/password.test.ts`), live 3, E2E 20 checks (22 in the real-provider run, which adds the preflight and the live provider-error test). Existing tests that needed updating: `routes.test.ts` (the exact protected-route set now includes `/backoffice/account/change-password`) and the test fakes in `helpers.ts`.
 
 ## Backend tests (`tests/test_password_reset.py`, 32)
 
@@ -76,3 +78,5 @@ Each protection was removed on purpose and the suite run again; every mutation m
 2. The AUTH-03 section cleared `localStorage` while Chrome was still on the public website's origin, so the backoffice session survived and `/login` correctly redirected away. The harness now clears storage on the backoffice origin first.
 
 Neither was a product defect; both made the first runs fail and are fixed in the harness.
+
+A third harness issue appeared in the first **real** run. The harness required Resend's `last_event` to equal `delivered`, but the owner had already opened the email, so Resend reported `opened`. Opening is only possible after delivery, so the check now accepts `delivered`, `opened` or `clicked`, and still rejects `sent`, `bounced` and similar. The repeated run passed 56/56 with `delivered`.
