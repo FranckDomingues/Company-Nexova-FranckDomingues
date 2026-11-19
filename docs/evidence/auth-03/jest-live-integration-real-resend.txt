@@ -1,0 +1,25 @@
+PASS tests/live.integration.test.ts
+  live API integration (FastAPI + PostgreSQL)
+    ✓ authenticates through the existing auth module and obtains a Bearer token (1 ms)
+    ✓ rejects protected writes without a token (real 401) (4 ms)
+    ✓ inbound order increases stock; outbound decreases it; over-stock is a real HTTP 400 (44 ms)
+    ✓ UI: outbound form shows real stock, inline real 400, and success against the live API (106 ms)
+    ✓ UI: history lists real orders with names, types and the authenticated user_uuid (42 ms)
+  AUTH-02 live auth flows (FastAPI, real JWTs, no mocks)
+    ✓ registers via POST /users, logs in via POST /auth/login and persists the real JWT in localStorage (368 ms)
+    ✓ a fresh session restores the stored token and validates it with GET /auth/me (182 ms)
+    ✓ wrong password is a clear error, stores nothing (174 ms)
+    ✓ duplicate registration (409) and short password (client + API 422) are field-level errors (5 ms)
+    ✓ PUT /profiles/me with the Bearer token updates the profile; GET /auth/me reflects it (181 ms)
+    ✓ a forged/invalid token is rejected by the API (401) and removed from storage (5 ms)
+  AUTH-03 live password flows (real FastAPI + real Resend adapter → local capture server)
+    ○ skipped forgot → emailed link → reset with NexovaAuth; reuse rejected; credentials swapped
+    ○ skipped unknown address: same success path for the client (no enumeration)
+    ○ skipped change-password through the shared Bearer client: wrong current → 400, then success
+
+Test Suites: 1 passed, 1 total
+Tests:       3 skipped, 11 passed, 14 total
+Snapshots:   0 total
+Time:        2.121 s
+Ran all test suites matching /tests\/live.integration.test.ts/i.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

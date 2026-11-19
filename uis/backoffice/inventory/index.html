@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#102a43" />
+  <title>Nexova Backoffice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Optional: window.NEXOVA_API_URL = 'http://127.0.0.1:8000' (same convention as the supplier directory). -->
+  <script src="/backoffice/config.js"></script>
+  <!-- NexovaAuth: the single auth module (JWT in localStorage, verified with GET /auth/me). -->
+  <script src="/backoffice/suppliers/dist/auth-session.js" defer></script>
+  <script type="module" src="/backoffice/inventory/dist/main.js"></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+  <a href="#app" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2">Saltar al contenido</a>
+  <header class="border-b border-slate-200 bg-white">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <a href="/backoffice/" class="text-xl font-bold tracking-tight text-slate-900">Nexova <span class="font-medium text-slate-500">Backoffice</span></a>
+      <nav id="inventory-nav" aria-label="Menú principal" hidden>
+        <ul class="flex flex-wrap gap-2 text-sm font-medium">
+          <li><a class="rounded-md px-3 py-2 hover:bg-slate-100" href="/backoffice/">Directorio de proveedores</a></li>
+          <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/inventory/products">Activos</a></li>
+          <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/inventory/orders/inbound">Entradas</a></li>
+          <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/inventory/orders/outbound">Salidas</a></li>
+          <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/inventory/orders">Historial</a></li>
+          <li><a data-link class="rounded-md px-3 py-2 hover:bg-slate-100 aria-[current=page]:bg-sky-50 aria-[current=page]:text-sky-900" href="/backoffice/account/profile">Mi perfil</a></li>
+        </ul>
+      </nav>
+      <!-- `hidden` must not share an element with a Tailwind display class (.flex would override it). -->
+      <div id="account-tools" hidden><div class="flex items-center gap-3 text-sm">
+        <span data-account-email class="text-slate-600"></span>
+        <button data-logout type="button" class="rounded-md border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">Cerrar sesión</button>
+      </div></div>
+    </div>
+  </header>
+  <main id="app" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" tabindex="-1">
+    <noscript>El inventario de Nexova requiere JavaScript.</noscript>
+  </main>
+</body>
+</html>
