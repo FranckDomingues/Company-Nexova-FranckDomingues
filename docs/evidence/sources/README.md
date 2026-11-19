@@ -13,3 +13,9 @@ The copies are provided for traceability; the syllabus revision above is authori
 Fetched unmodified from the same public syllabus at commit `784ef4a9c280e3000bbe79f53c6a15dbe1a43372` (latest commit touching the project at retrieval, 2026-11-18):
 
 - AUTH-02 project (Spanish): https://github.com/4GeeksAcademy/ai-engineering-syllabus/blob/784ef4a9c280e3000bbe79f53c6a15dbe1a43372/content/projects/ai-eng-user-authentication-flows/README.es.md → [`auth-02-README.es.md`](./auth-02-README.es.md)
+
+## AUTH-03 — La Pieza Que Faltaba: Flujo de Restablecimiento de Contraseña
+
+Fetched unmodified from the same syllabus commit `784ef4a9c280e3000bbe79f53c6a15dbe1a43372` (latest commit touching the project at retrieval, 2026-11-18):
+
+- AUTH-03 project (Spanish): https://github.com/4GeeksAcademy/ai-engineering-syllabus/blob/784ef4a9c280e3000bbe79f53c6a15dbe1a43372/content/projects/ai-eng-user-authentication-restore/README.es.md → [`auth-03-README.es.md`](./auth-03-README.es.md)

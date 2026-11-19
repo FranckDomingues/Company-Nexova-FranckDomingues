@@ -1,0 +1,288 @@
+{
+  "date": "2026-11-19T04:05:05.313Z",
+  "emailProvider": "simulated (local Resend-compatible server)",
+  "passed": 56,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "Disposable PostgreSQL 16 container with TLS is ready",
+      "status": "PASS",
+      "detail": "127.0.0.1:56237"
+    },
+    {
+      "name": "FastAPI started against the disposable database (schema created)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Briefing seed created via API (NXV-IT-001=12, NXV-PER-001=17)",
+      "status": "PASS",
+      "detail": "{\"NXV-IT-001\":12,\"NXV-IT-002\":8,\"NXV-PER-001\":17,\"NXV-PER-002\":0,\"NXV-OFF-001\":0,\"NXV-TRN-001\":0}"
+    },
+    {
+      "name": "Rows exist only in the disposable database",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Jest live API integration suite",
+      "status": "PASS",
+      "detail": "Tests: 14 passed, 14 total"
+    },
+    {
+      "name": "Browser: unauthenticated /backoffice/inventory/products redirects to login",
+      "status": "PASS",
+      "detail": "/backoffice/login?next=%2Fbackoffice%2Finventory%2Fproducts"
+    },
+    {
+      "name": "Browser: unauthenticated /backoffice/inventory/orders/inbound redirects to login",
+      "status": "PASS",
+      "detail": "/backoffice/login?next=%2Fbackoffice%2Finventory%2Forders%2Finbound"
+    },
+    {
+      "name": "Browser: unauthenticated /backoffice/inventory/orders/outbound redirects to login",
+      "status": "PASS",
+      "detail": "/backoffice/login?next=%2Fbackoffice%2Finventory%2Forders%2Foutbound"
+    },
+    {
+      "name": "Browser: unauthenticated /backoffice/inventory/orders redirects to login",
+      "status": "PASS",
+      "detail": "/backoffice/login?next=%2Fbackoffice%2Finventory%2Forders"
+    },
+    {
+      "name": "Browser: login returns to the requested route (history)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Browser: products page lists real assets with stock indicators matching the API",
+      "status": "PASS",
+      "detail": "NXV-IT-001:11:ok NXV-IT-002:8:ok NXV-PER-001:19:ok NXV-PER-002:0:out NXV-OFF-001:0:out NXV-TRN-001:0:out"
+    },
+    {
+      "name": "Browser: product action preselects asset in inbound form",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Browser: inbound order succeeds once (double submit guarded), stock +4 in backend, form reset",
+      "status": "PASS",
+      "detail": "19 -> 23"
+    },
+    {
+      "name": "Browser: outbound shows live stock and client warning when quantity exceeds it",
+      "status": "PASS",
+      "detail": "stock 23"
+    },
+    {
+      "name": "Browser: real HTTP 400 insufficient stock shown inline beside quantity",
+      "status": "PASS",
+      "detail": "Insufficient stock for asset 'Ratón ergonómico'. Available: 23, requested: 28."
+    },
+    {
+      "name": "Browser: outbound allocation succeeds, stock −2 in backend",
+      "status": "PASS",
+      "detail": "23 -> 21"
+    },
+    {
+      "name": "Browser: history matches API (all orders, both types, read-only, user_uuid, names)",
+      "status": "PASS",
+      "detail": "12 rows, 6 entradas, uuid d7ae4b52…, profile ok"
+    },
+    {
+      "name": "AUTH-02 Browser: full reload keeps the session (token in localStorage under nexova.auth.token, re-verified)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: shell chrome hidden on login is visible when authenticated",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: /backoffice/account/profile shows the real account from GET /auth/me",
+      "status": "PASS",
+      "detail": "ops-e3debb18@nexova.example"
+    },
+    {
+      "name": "AUTH-02 Browser: profile update persisted by PUT /profiles/me (verified via API)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: supplier directory with role \"user\" gets a real 403 → permissions message, session kept",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: supplier directory with a manager token lists suppliers (Bearer on /suppliers)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: real 401 during use clears the token and redirects to /login?reason=session",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: forged token → GET /auth/me 401 → removed, redirect to login, no private content",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: account tools are not displayed on the login page",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: wrong password → clear error, URL unchanged, no token stored",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: correct password → token stored → redirected to the requested private view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: logout removes the token; private view afterwards redirects to login",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: /register alias serves the registration view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: registration field errors (client 8-char rule, real API 409 duplicate email)",
+      "status": "PASS",
+      "detail": "La contraseña debe tener entre 8 y 128 caracteres."
+    },
+    {
+      "name": "AUTH-02 Browser: registration → POST /users → POST /auth/login → token stored → main view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-02 Browser: public website /index.html loads without token, guard or redirect",
+      "status": "PASS",
+      "detail": "Nexova Solutions | Talento, equipos y desarrollo corporativo"
+    },
+    {
+      "name": "AUTH-02 Browser: public website /application.html loads without token, guard or redirect",
+      "status": "PASS",
+      "detail": "Nexova Solutions | Registro de interés empresarial"
+    },
+    {
+      "name": "AUTH-03 Browser: /login shows a visible \"¿Olvidaste tu contraseña?\" link",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 Browser: /forgot-password shows the generic confirmation and disables the form",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 Email: reset email accepted by the provider [SIMULATED provider (local Resend-compatible server)]",
+      "status": "PASS",
+      "detail": "message id sim_2"
+    },
+    {
+      "name": "AUTH-03 Email: exactly one email for the double-submitted form; Resend request shape (Bearer, User-Agent, from/to/subject/html/text)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 Email: link points to the configured frontend /backoffice/reset-password?token=…",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 EXTRA-01: HTML email is readable on a 390px phone viewport (no horizontal overflow, button visible)",
+      "status": "PASS",
+      "detail": "{\"overflow\":false,\"button\":true}"
+    },
+    {
+      "name": "AUTH-03 API: unknown email → HTTP 200 with the identical body, no email sent",
+      "status": "PASS",
+      "detail": "{\"detail\":\"If that address is registered, a password reset link has been sent.\"}"
+    },
+    {
+      "name": "AUTH-03 Browser: reset link opens /reset-password and the token is removed from the address bar",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 Browser: mismatch blocked, then reset succeeds and redirects to /login with a success message",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 API: old password no longer authenticates (401), new password does (200)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 API: reusing the same reset token → HTTP 400",
+      "status": "PASS",
+      "detail": "{\"detail\":\"Invalid or expired reset token\"}"
+    },
+    {
+      "name": "AUTH-03 Browser: used link → clear error with a link back to /forgot-password",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 API: configured 15-minute window; an expired token → HTTP 400 and the password is unchanged",
+      "status": "PASS",
+      "detail": "window 15 min"
+    },
+    {
+      "name": "AUTH-03 Browser: /account/change-password requires a session (redirects to login)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 Browser: wrong current password → real HTTP 400 → field error, still signed in",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 Browser+API: change-password succeeds; previous password 401, new password 200",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 API: change-password without a token → 401; wrong current password → 400",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 EXTRA-02: per-email limit (3/hour) → 5 requests, all HTTP 200, only 3 emails sent",
+      "status": "PASS",
+      "detail": "3 emails"
+    },
+    {
+      "name": "AUTH-03 EXTRA-03: audit trail with timestamps, IP and user agent for request/email/reset/reject/change",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "AUTH-03 Security: no raw reset token or password anywhere in the database; no email address in the audit trail",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Browser: no uncaught JavaScript errors",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "Browser: no unexpected failed network requests",
+      "status": "PASS",
+      "detail": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:56240/favicon.ico | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:56239/inventory/orders/outbound | Failed to load resource: the server responded with a status of 403 (Forbidden) http://127.0.0.1:56239/suppliers | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:56239/auth/me | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:56239/auth/me | Failed to load resource: the server responded with a status of 401 (Unauthorized) http://127.0.0.1:56239/auth/login | Failed to load resource: the server responded with a status of 409 (Conflict) http://127.0.0.1:56239/users | Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:56293/favicon.ico | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:56239/auth/reset-password | Failed to load resource: the server responded with a status of 400 (Bad Request) http://127.0.0.1:56239/auth/change-password"
+    }
+  ]
+}
