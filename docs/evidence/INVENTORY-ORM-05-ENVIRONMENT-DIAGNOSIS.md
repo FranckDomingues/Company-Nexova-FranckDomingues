@@ -54,3 +54,7 @@ The resolved file exists and contains a `suppliers` table but no `users` table. 
 ## Acceptance
 
 Official status remains **28/29 PASS; T17 BLOCKED**. No evidence was promoted and no historical attribution was altered.
+
+## Correction (INVENTORY-ORM-06)
+
+The TinyDB path is cwd-independent only when `SUPPLIER_DB_PATH` is unset. `app/sql_database.py` runs `load_dotenv()` at import, and `services/api/.env` sets a relative `SUPPLIER_DB_PATH`, so the app and seed resolve it against the process working directory. From the documented cwd (`services/api`) it is the same file. See `INVENTORY-ORM-06-TINYDB-RECOVERY.md`.
