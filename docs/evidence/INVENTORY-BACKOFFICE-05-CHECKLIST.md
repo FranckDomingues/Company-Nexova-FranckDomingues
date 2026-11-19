@@ -11,9 +11,9 @@
 |---|---|
 | Development criteria (derived from the milestone brief) | **20/20 PASS** |
 | Provisional engineering acceptance checks | **10/10 PASS** (provisional, not the official rubric) |
-| Official 4Geeks evaluation criteria | **BLOCKED**: the official rubric text is not in the repository or the task materials |
+| Official evaluation criteria | **EVAL-10 PASS** (criterion text supplied by the owner on 2026-11-18); **EVAL-01…09 BLOCKED** (official text not yet supplied) |
 
-The official score is **not** reported as 30/30. That requires the official evaluation text, mapped one-to-one.
+The official score is **not** reported as 30/30. That requires the official text of EVAL-01…09, mapped one-to-one.
 
 ## How tests are labelled
 
@@ -63,12 +63,60 @@ These are **provisional engineering checks defined for this delivery**. They are
 | EVAL-07 | Read-only inventory movement history | HIS-1…4; `05-history.png` | PASS | BLOCKED |
 | EVAL-08 | Form validation and readable HTTP errors | API-3, IN-2, IN-4; real 422 in the live suite | PASS | BLOCKED |
 | EVAL-09 | Type checking, lint, build and automated tests | Test report: typecheck/lint/build PASS; Jest 54 passed; E2E 20/20; pytest 60 passed | PASS | BLOCKED |
-| EVAL-10 | Navigation integration, documentation and reproducibility | Supplier-page nav link; `inventory/README.md`; reproduction section; self-contained `npm run e2e` | PASS | BLOCKED |
+| EVAL-10 | Navigation integration, documentation and reproducibility | Supplier-page nav link; `inventory/README.md`; reproduction section; self-contained `npm run e2e` | PASS | Superseded by the official EVAL-10 below |
+
+## Official evaluation criteria
+
+Only criteria whose official text has been supplied are mapped. **No criterion text is inferred.**
+
+| ID | Official criterion (as supplied) | Result | Evidence |
+|---|---|---|---|
+| EVAL-01 … EVAL-09 | Text not supplied | BLOCKED | Supporting evidence is in the provisional checks above, but it is not attributed to the official rubric. |
+| EVAL-10 | "All inventory interface entity names and field labels must match `company-BRIEFING.md`." | **PASS** | See the verification below. |
+
+### EVAL-10 verification
+
+**Source.** The repository contains no file literally named `company-BRIEFING.md`. Nexova's company briefing is `docs/evidence/sources/nexova-BRIEFING.es.md` (source path `05-backend-inventory-orm/nexova-BRIEFING.md`; English twin `nexova-BRIEFING.en.md`). Its entity and field specification is in lines 30–64.
+
+**Entities.**
+
+| Briefing | UI label | Where |
+|---|---|---|
+| `Asset` ("activos") | Activo / Activos | `src/terms.ts`, `products.ts`, nav in `index.html` |
+| `AssetEntry` ("entrada de activos") | Entrada de activos / Entrada | `inbound.ts`, `history.ts` |
+| `AssetExit` ("salida de activos") | Salida de activos / Salida | `outbound.ts`, `history.ts` |
+
+No generic "Producto/Product" or "Inbound/Outbound" label appears; `tests/terminology.test.ts` asserts this.
+
+**Fields.**
+
+| Briefing field | UI label | Where |
+|---|---|---|
+| `name` | asset name in the "Activo / SKU" column and the selector | `products.ts`, `history.ts`, `forms.ts` |
+| `sku` ("Código único") | **SKU** in the "Activo / SKU" header | `products.ts`, `history.ts` |
+| `category` | Categoría | `products.ts` |
+| `office` ("oficina receptora" for entries) | Oficina / Oficina receptora | `products.ts`, `inbound.ts`, `history.ts` |
+| `current_stock` ("stock actual") | Stock actual / Stock disponible | `products.ts`, `outbound.ts` |
+| `quantity` ("Unidades recibidas") | Cantidad (unidades recibidas) / Cantidad (unidades) | `inbound.ts`, `outbound.ts`, `history.ts` |
+| `supplier` ("Nombre del proveedor o vendedor") | Proveedor | `inbound.ts`, `history.ts` |
+| `exit_type` ("allocation": asignado a empleado / "consumption") | Tipo de salida: Asignación a empleado / Consumo | `outbound.ts`, `history.ts` |
+| `assigned_to` ("Nombre o ID del empleado") | Empleado asignado, placeholder "Nombre o ID del empleado" | `outbound.ts` |
+| `created_at` | Fecha (the briefing gives no Spanish label) | `history.ts` |
+| `user_uuid` ("UUID del responsable que registró …") | Registrado por (UUID) | `history.ts` |
+
+**Correction made.** `sku` was displayed but never labelled. The products and history headers changed from "Activo" to "Activo / SKU" (`src/terms.ts`, `src/views/products.ts`, `src/views/history.ts`). No backend contract changed.
+
+**Note on category values.** The briefing lists `category` values as codes (`hardware`, `peripherals`, `office_supplies`, `training_materials`). The UI shows them as Spanish display values (Hardware, Periféricos, Material de oficina, Material de formación); the field label "Categoría" matches. These are values, not field labels, so they were left unchanged.
+
+**Tests.** `tests/terminology.test.ts` (extended), `products.test.ts`, `history.test.ts` and `route-states.test.ts`: **24 passed**. Type check, lint and build pass.
+
+**Screenshots.** `01-products.png` and `05-history.png` predate this label change (their header reads "Activo"). They were not regenerated.
 
 ## Totals
 
 - **Development:** 20/20 PASS.
 - **Provisional acceptance:** 10/10 PASS.
-- **Official evaluation:** BLOCKED (rubric not supplied).
+- **Official evaluation:** EVAL-10 PASS; EVAL-01…09 BLOCKED pending their official text.
+- **Verified official total:** **21/30** (20 task criteria + EVAL-10). The other 9 are BLOCKED, not FAIL.
 
 No criterion is counted twice.

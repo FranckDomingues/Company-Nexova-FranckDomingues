@@ -46,7 +46,7 @@ export async function renderProducts(ctx: ViewContext): Promise<void> {
     h('div', { className: 'overflow-x-auto' },
       h('table', { className: 'min-w-full divide-y divide-slate-200 text-left text-sm' },
         h('thead', { className: 'bg-slate-50 text-xs uppercase tracking-wide text-slate-600' },
-          h('tr', {}, ...[TERMS.asset, 'Categoría', TERMS.office, TERMS.currentStock, 'Acciones'].map(label => h('th', { scope: 'col', className: 'px-4 py-3' }, label)))),
+          h('tr', {}, ...[`${TERMS.asset} / ${TERMS.sku}`, 'Categoría', TERMS.office, TERMS.currentStock, 'Acciones'].map(label => h('th', { scope: 'col', className: 'px-4 py-3' }, label)))),
         body)));
   const legend = h('p', { className: 'mt-4 text-xs text-slate-500' },
     `Indicadores: “Sin stock” = 0 unidades · “Stock bajo” = 1–${LOW_STOCK_THRESHOLD} unidades · “Disponible” = más de ${LOW_STOCK_THRESHOLD}. El stock se calcula como entradas − salidas.`);

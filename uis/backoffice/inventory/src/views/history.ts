@@ -50,7 +50,7 @@ export async function renderHistory(ctx: ViewContext): Promise<void> {
       h('div', { className: 'overflow-x-auto' },
         h('table', { className: 'min-w-full divide-y divide-slate-200 text-left text-sm' },
           h('thead', { className: 'bg-slate-50 text-xs uppercase tracking-wide text-slate-600' },
-            h('tr', {}, ...[TERMS.createdAt, 'Tipo', TERMS.asset, TERMS.quantity, TERMS.office, 'Detalle', TERMS.registeredBy].map(label => h('th', { scope: 'col', className: 'px-4 py-3' }, label)))),
+            h('tr', {}, ...[TERMS.createdAt, 'Tipo', `${TERMS.asset} / ${TERMS.sku}`, TERMS.quantity, TERMS.office, 'Detalle', TERMS.registeredBy].map(label => h('th', { scope: 'col', className: 'px-4 py-3' }, label)))),
           body))));
 
   body.replaceChildren(h('tr', {}, h('td', { colspan: 7, className: 'px-4 py-8 text-center text-slate-500', dataset: { state: 'loading' } }, 'Cargando órdenes…')));

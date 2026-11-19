@@ -8,7 +8,7 @@
 |---|---|
 | Development criteria | 20/20 PASS |
 | Provisional acceptance checks | 10/10 PASS |
-| Official evaluation criteria | **BLOCKED**: the official 4Geeks rubric text is unavailable |
+| Official evaluation criteria | EVAL-10 **PASS**; EVAL-01…09 **BLOCKED** (official text not supplied). Verified official total **21/30**. |
 
 Every executable check passes. The milestone is not reported as 30/30 official.
 
@@ -43,6 +43,14 @@ The historical results from the first delivery (45 Jest, 20 E2E, 60 pytest) were
 
 1. **Fix:** on its initial load, the outbound form showed an empty, disabled selector with no loading text. It now shows "Cargando activos…" and "Cargando stock…", like the inbound form (`src/views/outbound.ts`).
 2. **New tests:** `tests/route-states.test.ts` checks a loading state, a successful state with real response data, and a readable Spanish error on HTTP 500 for each of the four routes. The error check also confirms that no backend internals and no token appear on screen.
+
+## EVAL-10 terminology check (2026-11-18)
+
+- Every entity name and field label in the four views was compared with `nexova-BRIEFING.es.md`.
+- One gap was found and fixed: `sku` had no label. The products and history headers now read "Activo / SKU".
+- Affected tests only: `npx jest tests/terminology.test.ts tests/products.test.ts tests/history.test.ts tests/route-states.test.ts` gives **24 passed**. Type check, lint and build pass.
+- The full suites and E2E were not re-run for this label-only change. E2E relies on selectors, not header text.
+- Details are in the checklist.
 
 ## Backend/API evidence
 

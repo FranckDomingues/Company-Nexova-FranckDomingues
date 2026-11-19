@@ -8,6 +8,7 @@ import type { Category, ExitType, InventoryOrder } from './lib/inventory.js';
 export const TERMS = {
   asset: 'Activo',
   assets: 'Activos',
+  sku: 'SKU',
   currentStock: 'Stock actual',
   availableStock: 'Stock disponible',
   inbound: 'Entrada de activos',
